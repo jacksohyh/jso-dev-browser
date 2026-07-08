@@ -1,0 +1,13 @@
+appId: com.jacks.devbrowser
+productName: DevBrowser
+directories:
+  output: release
+files:
+  - out/**
+win:
+  target:
+    - nsis
+    - portable
+nsis:
+  oneClick: true
+  deleteAppDataOnUninstall: false
