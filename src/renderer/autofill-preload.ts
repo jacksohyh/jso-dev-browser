@@ -4,6 +4,9 @@ function originOf(): string {
   return location.origin
 }
 
+// Autofill runs only in the top-level document; subframes stay inert.
+const isTopFrame = window.top === window
+
 function findUsername(form: HTMLFormElement, pw: HTMLInputElement): string {
   const fields = Array.from(form.querySelectorAll('input')) as HTMLInputElement[]
   const pwIdx = fields.indexOf(pw)
@@ -15,18 +18,20 @@ function findUsername(form: HTMLFormElement, pw: HTMLInputElement): string {
   return named?.value ?? ''
 }
 
-document.addEventListener(
-  'submit',
-  (e) => {
-    const form = e.target as HTMLElement
-    if (!(form instanceof HTMLFormElement)) return
-    const pw = form.querySelector<HTMLInputElement>('input[type="password"]')
-    if (!pw || !pw.value) return
-    const username = findUsername(form, pw)
-    ipcRenderer.send('autofill:captured', { origin: originOf(), username, password: pw.value })
-  },
-  true
-)
+if (isTopFrame) {
+  document.addEventListener(
+    'submit',
+    (e) => {
+      const form = e.target as HTMLElement
+      if (!(form instanceof HTMLFormElement)) return
+      const pw = form.querySelector<HTMLInputElement>('input[type="password"]')
+      if (!pw || !pw.value) return
+      const username = findUsername(form, pw)
+      ipcRenderer.send('autofill:captured', { origin: originOf(), username, password: pw.value })
+    },
+    true
+  )
+}
 
 let dropdown: HTMLElement | null = null
 
@@ -96,6 +101,7 @@ async function refreshLogins() {
 document.addEventListener(
   'focusin',
   (e) => {
+    if (!isTopFrame) return
     const el = e.target as HTMLElement
     if (
       el instanceof HTMLInputElement &&
@@ -109,5 +115,7 @@ document.addEventListener(
 )
 document.addEventListener('focusout', () => setTimeout(removeDropdown, 150), true)
 
-window.addEventListener('DOMContentLoaded', refreshLogins)
-refreshLogins()
+if (isTopFrame) {
+  window.addEventListener('DOMContentLoaded', refreshLogins)
+  refreshLogins()
+}

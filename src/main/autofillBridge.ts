@@ -2,11 +2,17 @@ import { ipcMain } from 'electron'
 import type { BrowserWindow, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import type { Vault } from './vault'
 
-/** The true origin of the frame that sent the IPC — never trust a renderer-supplied origin string. */
-function senderOrigin(e: IpcMainInvokeEvent | IpcMainEvent): string | null {
+/**
+ * The origin of the SENDER — but only for the top-level document. Subframes
+ * (including cross-origin iframes of a site you have creds for) return null,
+ * so autofill never operates inside an embedded frame. This is the trust
+ * boundary: enforced in the main process, not the renderer.
+ */
+function topFrameOrigin(e: IpcMainInvokeEvent | IpcMainEvent): string | null {
+  const frame = e.senderFrame
+  if (!frame || frame.parent !== null) return null
   try {
-    const url = e.senderFrame?.url
-    return url ? new URL(url).origin : null
+    return new URL(frame.url).origin
   } catch {
     return null
   }
@@ -26,19 +32,19 @@ export function registerAutofill(
   onCapture: (data: { origin: string; username: string; password: string }) => void
 ) {
   ipcMain.handle('autofill:query', (e: IpcMainInvokeEvent) => {
-    const origin = senderOrigin(e)
+    const origin = topFrameOrigin(e)
     return origin ? vault.list(origin) : []
   })
 
   ipcMain.handle('autofill:secret', (e: IpcMainInvokeEvent, id: string) => {
-    const origin = senderOrigin(e)
+    const origin = topFrameOrigin(e)
     if (!origin) return null
     // Only release the secret if this id belongs to the caller's own origin.
     return vault.list(origin).some((l) => l.id === id) ? vault.get(id) : null
   })
 
   ipcMain.on('autofill:captured', (e: IpcMainEvent, data: { username?: string; password?: string }) => {
-    const origin = senderOrigin(e)
+    const origin = topFrameOrigin(e)
     if (!origin || !data || !data.password) return
     if (vault.isNever(origin)) return
     const username = data.username ?? ''
