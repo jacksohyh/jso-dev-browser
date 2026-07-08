@@ -1,0 +1,112 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font: 13px system-ui, sans-serif;
+  background: #1b1e24;
+  color: #d8dbe2;
+  overflow: hidden;
+  user-select: none;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  padding: 0 6px;
+}
+.groups {
+  background: #14161b;
+}
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 6px;
+  cursor: default;
+  white-space: nowrap;
+  max-width: 220px;
+  color: #9aa0ab;
+}
+.chip .label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip:hover {
+  background: #262b33;
+}
+.chip.active {
+  background: #2e3440;
+  color: #fff;
+}
+.close {
+  opacity: 0.5;
+  padding: 0 2px;
+}
+.close:hover {
+  opacity: 1;
+  color: #e06c75;
+}
+.add {
+  background: none;
+  border: none;
+  color: #9aa0ab;
+  font-size: 16px;
+  cursor: pointer;
+}
+.add:hover {
+  color: #fff;
+}
+.addr input {
+  flex: 1;
+  background: #14161b;
+  border: 1px solid #2e3440;
+  border-radius: 6px;
+  color: #d8dbe2;
+  padding: 5px 10px;
+  outline: none;
+}
+.addr input:focus {
+  border-color: #4a5162;
+}
+.addr button {
+  background: #2e3440;
+  border: none;
+  border-radius: 6px;
+  color: #d8dbe2;
+  cursor: pointer;
+  padding: 4px 10px;
+}
+.addr button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.edit {
+  background: #14161b;
+  border: 1px solid #4a5162;
+  border-radius: 4px;
+  color: #fff;
+  font: inherit;
+  padding: 1px 4px;
+  width: 110px;
+}
+.ctx {
+  position: fixed;
+  z-index: 10;
+  background: #262b33;
+  border: 1px solid #3a4150;
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 190px;
+  box-shadow: 0 4px 16px #0008;
+}
+.ctx-item {
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: default;
+}
+.ctx-item:hover {
+  background: #2e3440;
+}

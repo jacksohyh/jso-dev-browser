@@ -8,12 +8,16 @@ const api = {
   onState: (cb: (state: AppState) => void) => {
     const h = (_e: IpcRendererEvent, s: AppState) => cb(s)
     ipcRenderer.on('state:changed', h)
-    return () => ipcRenderer.removeListener('state:changed', h)
+    return (): void => {
+      ipcRenderer.removeListener('state:changed', h)
+    }
   },
   onFocusAddress: (cb: () => void) => {
     const h = () => cb()
     ipcRenderer.on('chrome:focusAddress', h)
-    return () => ipcRenderer.removeListener('chrome:focusAddress', h)
+    return (): void => {
+      ipcRenderer.removeListener('chrome:focusAddress', h)
+    }
   },
 
   // --- groups ---

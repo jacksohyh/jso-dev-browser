@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import type { DevBrowserApi } from '../../preload/index'
 
 declare global {
