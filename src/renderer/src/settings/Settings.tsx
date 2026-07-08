@@ -55,7 +55,12 @@ export function Settings() {
               </button>
               <button
                 onClick={async () => {
-                  await navigator.clipboard.writeText((await window.devb.settingsReveal(l.id)) ?? '')
+                  try {
+                    const pw = await window.devb.settingsReveal(l.id)
+                    if (pw != null) await navigator.clipboard.writeText(pw)
+                  } catch {
+                    /* clipboard blocked — ignore */
+                  }
                 }}
               >
                 Copy

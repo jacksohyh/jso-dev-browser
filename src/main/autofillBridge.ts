@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import type { BrowserWindow, IpcMainEvent, IpcMainInvokeEvent } from 'electron'
+import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import type { Vault } from './vault'
 
 /**
@@ -28,7 +28,6 @@ function topFrameOrigin(e: IpcMainInvokeEvent | IpcMainEvent): string | null {
  */
 export function registerAutofill(
   vault: Vault,
-  _getChromeWindow: () => BrowserWindow,
   onCapture: (data: { origin: string; username: string; password: string }) => void
 ) {
   ipcMain.handle('autofill:query', (e: IpcMainInvokeEvent) => {

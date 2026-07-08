@@ -15,9 +15,9 @@ let win: BrowserWindow
 let store: AppStore
 let tabs: TabManager
 let panels: PanelManager
-let settings: SettingsWindow
+let settings: SettingsWindow | undefined
 let vault: Vault
-let pendingSave: { origin: string; username: string; password: string } | null = null
+let saveQueue: { origin: string; username: string; password: string }[] = []
 
 const stateFile = () => join(app.getPath('userData'), 'state.json')
 
@@ -40,10 +40,17 @@ function syncShownTab() {
   else tabs.hideCurrent()
 }
 
+function promptNextSave() {
+  const next = saveQueue[0]
+  if (next && win && !win.isDestroyed()) {
+    win.webContents.send('chrome:savePrompt', { origin: next.origin, username: next.username })
+  }
+}
+
 function applyZoom(level: number) {
   store.setZoom(level) // clamps + guards + emits (persist via onChange)
   tabs.setZoomAll(store.state.zoom)
-  settings.pushZoom(store.state.zoom)
+  settings?.pushZoom(store.state.zoom)
 }
 
 /** Startup safety net: delete partition dirs no tab references anymore. */
@@ -226,14 +233,20 @@ function registerIpc() {
     }
   })
 
-  ipcMain.handle('settings:open', () => settings.open())
+  ipcMain.handle('settings:open', () => settings?.open())
   ipcMain.handle('save:decide', (_e, accept: boolean) => {
-    if (accept && pendingSave) vault.add(pendingSave.origin, pendingSave.username, pendingSave.password)
-    pendingSave = null
+    const current = saveQueue.shift()
+    if (accept && current) vault.add(current.origin, current.username, current.password)
+    promptNextSave()
   })
   ipcMain.handle('save:never', () => {
-    if (pendingSave) vault.never(pendingSave.origin)
-    pendingSave = null
+    const current = saveQueue.shift()
+    if (current) {
+      vault.never(current.origin)
+      // Drop any other queued prompts for the same origin the user just silenced.
+      saveQueue = saveQueue.filter((d) => d.origin !== current.origin)
+    }
+    promptNextSave()
   })
 }
 
@@ -266,14 +279,10 @@ app.whenReady().then(() => {
     () => store.state.zoom,
     (level) => applyZoom(level)
   )
-  registerAutofill(
-    vault,
-    () => win,
-    (data) => {
-      pendingSave = data
-      win.webContents.send('chrome:savePrompt', { origin: data.origin, username: data.username })
-    }
-  )
+  registerAutofill(vault, (data) => {
+    saveQueue.push(data)
+    if (saveQueue.length === 1) promptNextSave()
+  })
 
   tabs.onZoomStep = (delta) => applyZoom(store.state.zoom + delta)
   tabs.setZoomAll(store.state.zoom) // apply persisted zoom to any views
