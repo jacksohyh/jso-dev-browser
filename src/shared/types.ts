@@ -29,3 +29,15 @@ export interface RequestSummary {
   failed?: string // CDP errorText when the request failed
   redirects?: { url: string; status: number | null }[] // earlier legs of a redirect chain
 }
+
+export interface PasswordEntry {
+  id: string
+  origin: string
+  username: string
+  secret: string // base64 safeStorage ciphertext
+}
+
+export interface SavedLogin {
+  id: string
+  username: string // no secret — secret is fetched on explicit selection
+}
