@@ -22,6 +22,19 @@ export class RequestLog {
     requestBody: string | null,
     ts: number
   ) {
+    const existing = this.byId.get(id)
+    if (existing) {
+      // CDP reuses the requestId on redirects — keep the chain instead of overwriting.
+      existing.redirects = [...(existing.redirects ?? []), { url: existing.url, status: existing.status }]
+      existing.method = method
+      existing.url = url
+      existing.requestHeaders = requestHeaders
+      existing.requestBody = requestBody
+      existing.status = null
+      existing.responseHeaders = {}
+      // startTs intentionally kept from the first leg so durationMs spans the whole chain
+      return
+    }
     this.byId.set(id, {
       id,
       method,

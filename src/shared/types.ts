@@ -26,4 +26,5 @@ export interface RequestSummary {
   status: number | null // null until a response arrives
   durationMs: number | null // null until loading finishes
   failed?: string // CDP errorText when the request failed
+  redirects?: { url: string; status: number | null }[] // earlier legs of a redirect chain
 }

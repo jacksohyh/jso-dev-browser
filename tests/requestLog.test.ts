@@ -22,6 +22,20 @@ describe('RequestLog', () => {
     expect(d.responseHeaders['content-type']).toBe('application/json')
   })
 
+  it('start() on an existing id records a redirect leg instead of overwriting', () => {
+    const log = new RequestLog()
+    log.start('r1', 'GET', 'http://x/a', 'Fetch', {}, null, 100)
+    log.response('r1', 302, { location: '/b' })
+    log.start('r1', 'GET', 'http://x/b', 'Fetch', {}, null, 100.05)
+    log.response('r1', 200, {})
+    log.finish('r1', 100.25)
+    const d = log.get('r1')!
+    expect(d.url).toBe('http://x/b')
+    expect(d.redirects).toEqual([{ url: 'http://x/a', status: 302 }])
+    expect(d.status).toBe(200)
+    expect(d.durationMs).toBe(250) // spans the whole chain from the original start
+  })
+
   it('records failures', () => {
     const log = new RequestLog()
     start(log, 'r1')
