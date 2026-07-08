@@ -163,6 +163,7 @@ export class AppStore {
   }
 
   setZoom(level: number) {
+    if (!Number.isFinite(level)) return
     this.state.zoom = Math.max(-3, Math.min(3, level))
     this.emit()
   }

@@ -124,6 +124,14 @@ describe('AppStore', () => {
     expect(calls).toBe(3)
   })
 
+  it('setZoom ignores non-finite values', () => {
+    store.setZoom(1)
+    store.setZoom(NaN)
+    expect(store.state.zoom).toBe(1)
+    store.setZoom(Infinity)
+    expect(store.state.zoom).toBe(1)
+  })
+
   it('duplicateTab inserts immediately after the source cluster, not at the end', () => {
     const g = store.state.groups[0]
     const a = store.addTab(g.id)
