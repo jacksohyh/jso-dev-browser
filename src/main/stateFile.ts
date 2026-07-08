@@ -20,6 +20,7 @@ export function loadState(file: string): AppState | null {
     ) {
       return null
     }
+    if (typeof data.zoom !== 'number') data.zoom = 0
     return data as AppState
   } catch {
     return null

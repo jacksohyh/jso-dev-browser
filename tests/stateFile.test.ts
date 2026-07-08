@@ -46,4 +46,20 @@ describe('stateFile', () => {
     )
     expect(loadState(file)).toBeNull()
   })
+
+  it('defaults missing zoom to 0 for back-compat', () => {
+    const s = createInitialState()
+    const { zoom, ...noZoom } = s as any
+    writeFileSync(file, JSON.stringify(noZoom))
+    const loaded = loadState(file)
+    expect(loaded).not.toBeNull()
+    expect(loaded!.zoom).toBe(0)
+  })
+
+  it('preserves a valid zoom value', () => {
+    const s = createInitialState()
+    s.zoom = 2
+    saveState(file, s)
+    expect(loadState(file)!.zoom).toBe(2)
+  })
 })
