@@ -1,0 +1,131 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font: 12px ui-monospace, Consolas, monospace;
+  background: #1b1e24;
+  color: #d8dbe2;
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  background: #14161b;
+}
+.toolbar input[type='text'],
+.toolbar input:not([type]) {
+  flex: 0 0 220px;
+  background: #1b1e24;
+  border: 1px solid #2e3440;
+  border-radius: 4px;
+  color: #d8dbe2;
+  padding: 4px 8px;
+  outline: none;
+}
+.toolbar button {
+  background: #2e3440;
+  border: none;
+  border-radius: 4px;
+  color: #d8dbe2;
+  cursor: pointer;
+  padding: 4px 10px;
+}
+.warn {
+  color: #e5c07b;
+}
+.split {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.list {
+  flex: 1;
+  overflow: auto;
+  border-right: 1px solid #2e3440;
+}
+.list table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.list tr {
+  cursor: default;
+}
+.list tr:hover {
+  background: #22262e;
+}
+.list tr.sel {
+  background: #2e3440;
+}
+.list tr.failed td {
+  color: #e06c75;
+}
+.list td {
+  padding: 3px 8px;
+  border-bottom: 1px solid #22262e;
+  white-space: nowrap;
+}
+.method {
+  color: #61afef;
+  width: 1%;
+}
+.path {
+  max-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.status {
+  width: 1%;
+}
+.dur {
+  width: 1%;
+  color: #9aa0ab;
+}
+.detail {
+  flex: 1;
+  overflow: auto;
+  padding: 10px;
+}
+.detail h3 {
+  margin: 0 0 4px;
+}
+.detail h4 {
+  margin: 14px 0 4px;
+  color: #9aa0ab;
+}
+.detail .url {
+  word-break: break-all;
+  color: #9aa0ab;
+  margin: 0;
+}
+.detail pre {
+  background: #14161b;
+  padding: 8px;
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 300px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.kv td {
+  vertical-align: top;
+  padding: 1px 8px 1px 0;
+  word-break: break-all;
+}
+.kv td:first-child {
+  color: #61afef;
+  white-space: nowrap;
+}
+.dim {
+  color: #5c6370;
+}
+.empty {
+  text-align: center;
+  margin-top: 30px;
+}
