@@ -207,6 +207,8 @@ function createWindow() {
     width: 1280,
     height: 800,
     autoHideMenuBar: true,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { color: '#14161b', symbolColor: '#d8dbe2', height: 32 },
     webPreferences: { preload: join(__dirname, '../preload/index.js') }
   })
   win.on('closed', () => app.quit())

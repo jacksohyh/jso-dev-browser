@@ -20,6 +20,13 @@ body {
 }
 .groups {
   background: #14161b;
+  padding-right: 140px;
+  -webkit-app-region: drag;
+}
+.groups .chip,
+.groups .add,
+.groups .cog {
+  -webkit-app-region: no-drag;
 }
 .chip {
   display: flex;
@@ -59,6 +66,20 @@ body {
   cursor: pointer;
 }
 .add:hover {
+  color: #fff;
+}
+.spacer {
+  flex: 1;
+}
+.cog {
+  background: none;
+  border: none;
+  color: #9aa0ab;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 0 6px;
+}
+.cog:hover {
   color: #fff;
 }
 .addr input {
