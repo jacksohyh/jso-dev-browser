@@ -23,6 +23,8 @@ export interface TabManagerEvents {
 }
 
 export class TabManager {
+  // Views stay alive until their tab closes (keep-warm, like Chrome); many open
+  // tabs therefore hold many renderer processes — deliberate trade-off for a dev tool.
   private views = new Map<string, WebContentsView>()
   private shownTabId: string | null = null
 
@@ -42,6 +44,13 @@ export class TabManager {
     const view = new WebContentsView({ webPreferences: { partition: tab.partition } })
     this.views.set(tab.id, view)
     const wc = view.webContents
+    // OAuth/login popups: explicitly allow window.open so sign-in flows work.
+    // Child windows inherit this webContents' session, so cookies stay in the
+    // tab's partition and window.opener callbacks keep working.
+    wc.setWindowOpenHandler(() => ({
+      action: 'allow',
+      overrideBrowserWindowOptions: { autoHideMenuBar: true }
+    }))
     wc.on('page-title-updated', (_e, title) => this.store.setTabTitle(tab.id, title))
     wc.on('did-navigate', (_e, url) => {
       if (!url.startsWith('data:')) this.store.setTabUrl(tab.id, url)
@@ -82,19 +91,25 @@ export class TabManager {
   /** Destroy the view; when the session is orphaned, wipe its on-disk storage. */
   closeTab(tabId: string, clearSession: boolean, partition: string) {
     const view = this.views.get(tabId)
+    const wipe = clearSession
+      ? () => {
+          session
+            .fromPartition(partition)
+            .clearStorageData()
+            .catch(() => {})
+        }
+      : null
     if (view) {
       if (this.shownTabId === tabId) {
         this.win.contentView.removeChildView(view)
         this.shownTabId = null
       }
+      // Wipe after teardown so the closing page can't write cookies behind us.
+      if (wipe) view.webContents.once('destroyed', wipe)
       view.webContents.close()
       this.views.delete(tabId)
-    }
-    if (clearSession) {
-      session
-        .fromPartition(partition)
-        .clearStorageData()
-        .catch(() => {})
+    } else if (wipe) {
+      wipe()
     }
   }
 
