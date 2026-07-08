@@ -13,6 +13,7 @@ Five additions to the completed dev-browser, all serving the multi-account devel
 3. **Password manager** — Chrome-style save + autofill, OS-encrypted, multiple accounts per site.
 4. **Settings cog** — a top-right settings entry point hosting the password manager and a shortcuts reference.
 5. **Merged title bar** — remove the OS title bar and host the chrome in that space (Chrome-style), reclaiming ~30px.
+6. **Page zoom** — Ctrl+wheel / Ctrl+± / Ctrl+0 and a settings control; one global zoom level, persisted.
 
 ## 1. Session grouping
 
@@ -76,6 +77,7 @@ Forward-only, wrapping. Added to the existing `wireShortcuts` in `src/main/index
 - Opens a settings surface. Chosen approach: a **separate `BrowserWindow`** loading a new `settings.html` renderer entry (mirrors the API-panel window pattern already in the codebase — avoids overlaying the WebContentsView, which we learned can't be covered by DOM).
 - v1.1 contents:
   - **Saved Passwords** — list grouped by origin; each row shows username with reveal (calls `autofill:secret`), copy, and delete. Also lists/clears `neverOrigins`.
+  - **Zoom** — current percentage with −/＋ and "Reset to 100%" (see §6).
   - **Shortcuts** — static reference of all keybindings.
 - Managed by a `SettingsWindow` manager in main (open/focus/close, single instance), with IPC for the password CRUD it needs.
 
@@ -101,6 +103,24 @@ Remove the OS title bar and let the existing chrome rows occupy that space, Chro
 
 Risk note: `WebContentsView` layout still starts at `y = CHROME_HEIGHT`; the overlay only affects the top-right corner of the chrome renderer, not the page view. No change to `TabManager.layout()`.
 
+## 6. Page zoom
+
+One global zoom level applied to every tab, persisted across restarts.
+
+- State: a `zoom` number (webContents zoom level, 0 = 100%) added to `AppState` (persisted via the existing `stateFile`), default 0. Because it lives in `AppState`, `loadState`'s validation must tolerate its absence in old files (default to 0) and not reject on it.
+- `TabManager` applies the current zoom to every `WebContentsView` on creation (`webContents.setZoomLevel(zoom)`), and exposes `setZoom(level)` that applies to **all** open views at once.
+- **Ctrl+wheel:** each view's `webContents.on('zoom-changed', (_e, dir) => …)` fires on Ctrl+wheel; the handler steps the global zoom (±0.5 level per notch, clamped to [-3, +3] ≈ 50%–300%), persists it, and applies to all views so every tab stays in sync.
+- **Keyboard** (added to `wireShortcuts`): `Ctrl+=` / `Ctrl+-` step zoom; `Ctrl+0` resets to 0. Same clamp + apply-to-all + persist.
+- **Settings** (§4): a Zoom control showing the current percentage with −/＋ buttons and a "Reset to 100%", calling the same setZoom path via IPC.
+- All zoom mutations funnel through one `applyZoom(level)` in `index.ts` (clamp → store → persist → apply to all views → refresh settings window if open) so wheel, keyboard, and settings can't diverge.
+
+### Files
+- `src/shared/types.ts` — add `zoom: number` to `AppState`.
+- `src/main/state.ts` — `createInitialState` sets `zoom: 0`; add `setZoom(level)` (clamps, emits).
+- `src/main/stateFile.ts` — `loadState` defaults missing `zoom` to 0 (back-compat).
+- `src/main/tabs.ts` — apply zoom on view creation; `setZoom` across all views; `zoom-changed` wiring.
+- `src/main/index.ts` — `applyZoom` funnel; keyboard branches; settings IPC.
+
 ## Architecture summary
 
 New main modules (each one responsibility, testable in isolation): `vault.ts` (encrypted CRUD), `autofillBridge.ts` (IPC glue), `settingsWindow.ts` (window lifecycle). New renderer entries: `autofill-preload` (injected content script), `settings/*` (settings UI), plus `sessionColors.ts` and `SavePrompt` in the chrome UI. Store gains `duplicateTab` insert-adjacent + `nextTab`/`nextGroup`. Wiring lands in `index.ts`.
@@ -112,8 +132,8 @@ New main modules (each one responsibility, testable in isolation): `vault.ts` (e
 - Injected script errors are sandboxed to the page and must never break navigation.
 
 ## Testing
-- Unit (vitest, no Electron): `sessionColors` assignment; `AppStore.duplicateTab` contiguity + `nextTab`/`nextGroup` wrap-around; `Vault` CRUD/dedupe/ignore-list/keying with a mocked `safeStorage`.
-- Manual (Electron): save prompt on a real login submit; dropdown fill of one of multiple accounts; no cross-origin iframe fill; encrypted-at-rest check (inspect `passwords.json` — password unreadable); Ctrl+Tab / Ctrl+Shift+Tab cycling; session color bars on duplicates; settings window password reveal/delete; merged title bar — native min/max/close work, window drags by the group row, no chip renders under the buttons.
+- Unit (vitest, no Electron): `sessionColors` assignment; `AppStore.duplicateTab` contiguity + `nextTab`/`nextGroup` wrap-around; `AppStore.setZoom` clamp; `loadState` zoom back-compat default; `Vault` CRUD/dedupe/ignore-list/keying with a mocked `safeStorage`.
+- Manual (Electron): save prompt on a real login submit; dropdown fill of one of multiple accounts; no cross-origin iframe fill; encrypted-at-rest check (inspect `passwords.json` — password unreadable); Ctrl+Tab / Ctrl+Shift+Tab cycling; session color bars on duplicates; settings window password reveal/delete; merged title bar — native min/max/close work, window drags by the group row, no chip renders under the buttons; zoom via Ctrl+wheel / Ctrl+± / Ctrl+0 and settings, all tabs sync, level survives restart.
 
 ## Out of scope (v1.1)
-Master-password lock, password generation, breach/reuse warnings, sync, import/export, autofill of non-login fields (addresses/cards), reverse-cycle hotkeys, drag-reorder of tabs.
+Master-password lock, password generation, breach/reuse warnings, sync, import/export, autofill of non-login fields (addresses/cards), reverse-cycle hotkeys, drag-reorder of tabs, per-tab zoom.
