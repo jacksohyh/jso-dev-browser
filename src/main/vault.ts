@@ -32,9 +32,20 @@ export class Vault {
     try {
       if (!existsSync(this.file)) return
       const parsed = JSON.parse(readFileSync(this.file, 'utf8'))
-      if (Array.isArray(parsed.entries) && Array.isArray(parsed.neverOrigins)) {
-        this.data = parsed
-      }
+      const entries = Array.isArray(parsed.entries)
+        ? parsed.entries.filter(
+            (e: any) =>
+              e &&
+              typeof e.id === 'string' &&
+              typeof e.origin === 'string' &&
+              typeof e.username === 'string' &&
+              typeof e.secret === 'string'
+          )
+        : []
+      const neverOrigins = Array.isArray(parsed.neverOrigins)
+        ? parsed.neverOrigins.filter((o: any) => typeof o === 'string')
+        : []
+      this.data = { entries, neverOrigins }
     } catch {
       this.data = { entries: [], neverOrigins: [] }
     }

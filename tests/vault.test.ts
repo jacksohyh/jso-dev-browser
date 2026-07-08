@@ -99,4 +99,19 @@ describe('Vault', () => {
     const v = new Vault(file, fakeSafe)
     expect(v.list('http://x')).toEqual([])
   })
+
+  it('drops malformed entries on load without crashing', () => {
+    const { writeFileSync } = require('node:fs')
+    writeFileSync(
+      file,
+      JSON.stringify({
+        entries: [{ id: 'good', origin: 'http://x', username: 'u', secret: 'ENC' }, { id: 'bad' }, null],
+        neverOrigins: ['http://y', 42]
+      })
+    )
+    const v = new Vault(file, fakeSafe)
+    expect(v.list('http://x').map((l) => l.username)).toEqual(['u'])
+    expect(v.allOrigins()).toEqual(['http://x'])
+    expect(v.isNever('http://y')).toBe(true)
+  })
 })
