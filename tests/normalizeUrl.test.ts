@@ -18,7 +18,9 @@ describe('normalizeUrl', () => {
   it('trims whitespace', () => {
     expect(normalizeUrl('  8080 ')).toBe('http://localhost:8080')
   })
-  it('passes about:/data: through', () => {
+  it('passes about: through but not file:/data: (they get mangled into dead http urls)', () => {
     expect(normalizeUrl('about:blank')).toBe('about:blank')
+    expect(normalizeUrl('file:///C:/secrets.txt')).toBe('http://file:///C:/secrets.txt')
+    expect(normalizeUrl('data:text/html,hi')).toBe('http://data:text/html,hi')
   })
 })
