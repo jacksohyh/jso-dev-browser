@@ -15,6 +15,8 @@ body {
   gap: 4px;
   height: 32px;
   padding: 0 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 .groups {
   background: #14161b;
@@ -91,22 +93,4 @@ body {
   font: inherit;
   padding: 1px 4px;
   width: 110px;
-}
-.ctx {
-  position: fixed;
-  z-index: 10;
-  background: #262b33;
-  border: 1px solid #3a4150;
-  border-radius: 6px;
-  padding: 4px;
-  min-width: 190px;
-  box-shadow: 0 4px 16px #0008;
-}
-.ctx-item {
-  padding: 6px 10px;
-  border-radius: 4px;
-  cursor: default;
-}
-.ctx-item:hover {
-  background: #2e3440;
 }

@@ -19,12 +19,20 @@ const api = {
       ipcRenderer.removeListener('chrome:focusAddress', h)
     }
   },
+  onStartRename: (cb: (kind: 'group' | 'tab', id: string) => void) => {
+    const h = (_e: IpcRendererEvent, kind: 'group' | 'tab', id: string) => cb(kind, id)
+    ipcRenderer.on('chrome:startRename', h)
+    return (): void => {
+      ipcRenderer.removeListener('chrome:startRename', h)
+    }
+  },
 
   // --- groups ---
   addGroup: (): Promise<void> => ipcRenderer.invoke('group:add'),
   renameGroup: (id: string, name: string): Promise<void> => ipcRenderer.invoke('group:rename', id, name),
   deleteGroup: (id: string): Promise<void> => ipcRenderer.invoke('group:delete', id),
   activateGroup: (id: string): Promise<void> => ipcRenderer.invoke('group:activate', id),
+  showGroupMenu: (id: string): Promise<void> => ipcRenderer.invoke('menu:group', id),
 
   // --- tabs ---
   addTab: (groupId: string): Promise<void> => ipcRenderer.invoke('tab:add', groupId),
@@ -37,6 +45,7 @@ const api = {
   forward: (id: string): Promise<void> => ipcRenderer.invoke('tab:forward', id),
   reload: (id: string): Promise<void> => ipcRenderer.invoke('tab:reload', id),
   togglePanel: (id: string): Promise<void> => ipcRenderer.invoke('panel:toggle', id),
+  showTabMenu: (id: string): Promise<void> => ipcRenderer.invoke('menu:tab', id),
 
   // --- API panel window ---
   panelInit: (tabId: string): Promise<{ requests: RequestSummary[]; capturing: boolean }> =>

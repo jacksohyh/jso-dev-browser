@@ -1,58 +1,48 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { GroupInfo, TabInfo } from '../../../shared/types'
-import { ContextMenu } from './ContextMenu'
 import { EditableLabel } from './EditableLabel'
 
 function TabChip({ tab, active }: { tab: TabInfo; active: boolean }) {
   const [editing, setEditing] = useState(false)
-  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null)
+  useEffect(
+    () =>
+      window.devb.onStartRename((kind, id) => {
+        if (kind === 'tab' && id === tab.id) setEditing(true)
+      }),
+    [tab.id]
+  )
   return (
-    <>
-      <div
-        className={'chip' + (active ? ' active' : '')}
-        onClick={() => window.devb.activateTab(tab.id)}
-        onDoubleClick={() => setEditing(true)}
-        onContextMenu={(e) => {
-          e.preventDefault()
+    <div
+      className={'chip' + (active ? ' active' : '')}
+      onClick={() => window.devb.activateTab(tab.id)}
+      onDoubleClick={() => setEditing(true)}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        window.devb.showTabMenu(tab.id)
+      }}
+    >
+      {editing ? (
+        <EditableLabel
+          value={tab.name}
+          onDone={(v) => {
+            if (v) window.devb.renameTab(tab.id, v)
+            setEditing(false)
+          }}
+        />
+      ) : (
+        <span className="label">{tab.name}</span>
+      )}
+      <span
+        className="close"
+        title="Close tab"
+        onClick={(e) => {
           e.stopPropagation()
-          setMenu({ x: e.clientX, y: e.clientY })
+          window.devb.closeTab(tab.id)
         }}
       >
-        {editing ? (
-          <EditableLabel
-            value={tab.name}
-            onDone={(v) => {
-              if (v) window.devb.renameTab(tab.id, v)
-              setEditing(false)
-            }}
-          />
-        ) : (
-          <span className="label">{tab.name}</span>
-        )}
-        <span
-          className="close"
-          title="Close tab"
-          onClick={(e) => {
-            e.stopPropagation()
-            window.devb.closeTab(tab.id)
-          }}
-        >
-          ×
-        </span>
-      </div>
-      {menu && (
-        <ContextMenu
-          x={menu.x}
-          y={menu.y}
-          onClose={() => setMenu(null)}
-          items={[
-            { label: 'Duplicate (same session)', onClick: () => window.devb.duplicateTab(tab.id) },
-            { label: 'Rename', onClick: () => setEditing(true) },
-            { label: 'Close', onClick: () => window.devb.closeTab(tab.id) }
-          ]}
-        />
-      )}
-    </>
+        ×
+      </span>
+    </div>
   )
 }
 
