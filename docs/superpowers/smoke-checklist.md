@@ -15,3 +15,14 @@ Run after any significant change, against the packaged exe (`npm run dist` → `
 - [ ] F12 opens the floating API panel; fetch/XHR calls appear; filter works; scrolling up pauses auto-follow
 - [ ] Clicking a request shows request/response headers, pretty JSON response body, and redirect chains when present
 - [ ] Ctrl+T, Ctrl+W, Ctrl+L, Ctrl+R, Ctrl+Shift+F12 all work with focus in the page
+
+## v1.1 additions
+
+- [ ] Duplicate a tab → original + duplicate show a matching color bar and are adjacent; solo tabs have no bar; closing one duplicate does not recolor other sessions
+- [ ] Ctrl+Tab cycles tabs forward (wraps); Ctrl+Shift+Tab cycles groups forward (wraps)
+- [ ] No OS title bar; native min/max/close work top-right; window drags by the group row; nothing renders under the buttons
+- [ ] Ctrl+wheel / Ctrl+= / Ctrl+- / Ctrl+0 zoom all tabs together; level survives restart
+- [ ] Settings (⚙) opens; Zoom control matches and drives page zoom
+- [ ] Login submit → save bar → Save persists (Reveal in settings shows it); Never suppresses that origin; two rapid submits queue (one prompt at a time, none dropped)
+- [ ] Autofill dropdown lists saved accounts for the site; selecting fills username+password; never auto-submits; no fill inside cross-origin iframes (top-frame only)
+- [ ] passwords.json on disk contains no plaintext password
