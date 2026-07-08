@@ -22,7 +22,7 @@ Built with Electron + React, packaged with electron-builder into a Windows insta
 
 ### Tabs
 - Second row shows the tabs of the selected group: `[Tab 1] [Tab 2] [+]`.
-- Rename (double-click), close (x / ctrl+W), reorder by drag within the group.
+- Rename (double-click), close (x / ctrl+W).
 - **`+` (new tab): creates a tab with a brand-new isolated session** — its own cookies, localStorage, and logins, empty at creation (incognito-like start), but **persisted to disk**.
 - **Right-click → Duplicate (same session): creates a new tab sharing the *same live session*** as the original. Logging in/out in one is reflected in the other (like two Chrome tabs in one profile).
 - Each tab has: name (defaults to page title until renamed), URL, session partition id.
@@ -94,4 +94,4 @@ A **floating window per tab** (toggle via button or F12) that shows only network
 
 ## Out of scope (v1)
 
-History, bookmarks, downloads UI, browser extensions, Docker auto-detection, per-group saved URLs, tab search, split view.
+History, bookmarks, downloads UI, browser extensions, Docker auto-detection, per-group saved URLs, tab search, split view, drag-reordering tabs.
