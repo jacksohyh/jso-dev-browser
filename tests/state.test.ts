@@ -60,6 +60,15 @@ describe('AppStore', () => {
     expect(store.closeTab(t2.id).partitionOrphaned).toBe(true)
   })
 
+  it('partition stays in use when a tab in another group shares it (cross-group duplicate)', () => {
+    const g1 = store.state.groups[0]
+    const g2 = store.addGroup()
+    const t1 = store.addTab(g1.id)
+    const t2 = store.addTab(g2.id, { partition: t1.partition })
+    expect(store.closeTab(t1.id).partitionOrphaned).toBe(false)
+    expect(store.closeTab(t2.id).partitionOrphaned).toBe(true)
+  })
+
   it('closing the active tab activates a neighbor', () => {
     const g = store.state.groups[0]
     const t1 = store.addTab(g.id)

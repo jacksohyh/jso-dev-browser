@@ -12,6 +12,7 @@ export function createInitialState(): AppState {
 
 /** Single source of truth for groups/tabs/sessions. Pure data — no Electron. */
 export class AppStore {
+  /** Fires synchronously after each mutation. Handlers must not re-enter store mutators. */
   onChange: () => void = () => {}
 
   constructor(public state: AppState = createInitialState()) {}
@@ -61,7 +62,12 @@ export class AppStore {
     this.emit()
   }
 
-  /** Removes the group; returns its tabs so the caller can destroy views/sessions. */
+  /**
+   * Removes the group; returns its tabs so the caller can destroy views/sessions.
+   * Session cleanup contract: for each returned tab, check isPartitionInUse(tab.partition)
+   * AFTER this returns — a partition may still be used by a tab in another group
+   * (cross-group duplicate). Only clear storage when it reports false.
+   */
   deleteGroup(groupId: string): TabInfo[] {
     const g = this.group(groupId)
     this.state.groups = this.state.groups.filter((x) => x.id !== groupId)
