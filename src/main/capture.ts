@@ -9,6 +9,12 @@ export class NetworkCapture {
 
   constructor(private wc: WebContents) {}
 
+  private onDetach = () => {
+    this.attached = false
+  }
+
+  private onDebuggerMessage = (_e: unknown, method: string, params: any) => this.onMessage(method, params)
+
   /** Returns false when another debugger (e.g. real DevTools) is attached. */
   attach(): boolean {
     if (this.attached) return true
@@ -18,10 +24,10 @@ export class NetworkCapture {
       return false
     }
     this.attached = true
-    this.wc.debugger.on('detach', () => {
-      this.attached = false
-    })
-    this.wc.debugger.on('message', (_e, method, params) => this.onMessage(method, params))
+    this.wc.debugger.removeListener('detach', this.onDetach)
+    this.wc.debugger.removeListener('message', this.onDebuggerMessage)
+    this.wc.debugger.on('detach', this.onDetach)
+    this.wc.debugger.on('message', this.onDebuggerMessage)
     this.wc.debugger.sendCommand('Network.enable').catch(() => {})
     return true
   }
@@ -33,6 +39,8 @@ export class NetworkCapture {
     } catch {
       /* already gone */
     }
+    this.wc.debugger.removeListener('detach', this.onDetach)
+    this.wc.debugger.removeListener('message', this.onDebuggerMessage)
     this.attached = false
   }
 
