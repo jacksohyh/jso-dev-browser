@@ -16,6 +16,7 @@ export interface AppState {
   groups: GroupInfo[]
   activeGroupId: string
   activeTabByGroup: Record<string, string>
+  zoom: number // webContents zoom level shared by all tabs; 0 = 100%
 }
 
 export interface RequestSummary {

@@ -7,7 +7,7 @@ export function newPartition(): string {
 
 export function createInitialState(): AppState {
   const g: GroupInfo = { id: randomUUID(), name: 'Group 1', tabs: [] }
-  return { groups: [g], activeGroupId: g.id, activeTabByGroup: {} }
+  return { groups: [g], activeGroupId: g.id, activeTabByGroup: {}, zoom: 0 }
 }
 
 /** Single source of truth for groups/tabs/sessions. Pure data — no Electron. */
@@ -98,7 +98,21 @@ export class AppStore {
 
   duplicateTab(tabId: string): TabInfo {
     const { group, tab } = this.findTab(tabId)
-    return this.addTab(group.id, { url: tab.url, partition: tab.partition })
+    const dup: TabInfo = {
+      id: randomUUID(),
+      name: tab.name,
+      customName: tab.customName,
+      url: tab.url,
+      partition: tab.partition
+    }
+    // Insert right after the last tab in the source partition's contiguous cluster.
+    let last = group.tabs.indexOf(tab)
+    while (last + 1 < group.tabs.length && group.tabs[last + 1].partition === tab.partition) last++
+    group.tabs.splice(last + 1, 0, dup)
+    this.state.activeGroupId = group.id
+    this.state.activeTabByGroup[group.id] = dup.id
+    this.emit()
+    return dup
   }
 
   /** partitionOrphaned=true when no remaining tab shares the closed tab's session. */
@@ -145,6 +159,30 @@ export class AppStore {
     const { group } = this.findTab(tabId)
     this.state.activeGroupId = group.id
     this.state.activeTabByGroup[group.id] = tabId
+    this.emit()
+  }
+
+  setZoom(level: number) {
+    this.state.zoom = Math.max(-3, Math.min(3, level))
+    this.emit()
+  }
+
+  nextTab() {
+    const groupId = this.state.activeGroupId
+    const group = this.group(groupId)
+    if (group.tabs.length < 2) return
+    const currentId = this.state.activeTabByGroup[groupId]
+    const idx = group.tabs.findIndex((t) => t.id === currentId)
+    const next = group.tabs[(idx + 1) % group.tabs.length]
+    this.state.activeTabByGroup[groupId] = next.id
+    this.emit()
+  }
+
+  nextGroup() {
+    if (this.state.groups.length < 2) return
+    const idx = this.state.groups.findIndex((g) => g.id === this.state.activeGroupId)
+    const next = this.state.groups[(idx + 1) % this.state.groups.length]
+    this.state.activeGroupId = next.id
     this.emit()
   }
 
