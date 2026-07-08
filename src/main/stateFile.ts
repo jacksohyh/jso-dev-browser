@@ -11,7 +11,12 @@ export function loadState(file: string): AppState | null {
       !Array.isArray(data.groups) ||
       typeof data.activeGroupId !== 'string' ||
       typeof data.activeTabByGroup !== 'object' ||
-      data.activeTabByGroup === null
+      data.activeTabByGroup === null ||
+      !data.groups.every(
+        (g: any) =>
+          Array.isArray(g?.tabs) &&
+          g.tabs.every((t: any) => typeof t?.id === 'string' && typeof t?.partition === 'string')
+      )
     ) {
       return null
     }

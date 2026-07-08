@@ -34,4 +34,16 @@ describe('stateFile', () => {
     writeFileSync(file, JSON.stringify({ groups: 5 }))
     expect(loadState(file)).toBeNull()
   })
+
+  it('returns null when nested tabs are misshapen', () => {
+    writeFileSync(
+      file,
+      JSON.stringify({
+        groups: [{ id: 'g', name: 'x', tabs: [{ id: 't' }] }],
+        activeGroupId: 'g',
+        activeTabByGroup: {}
+      })
+    )
+    expect(loadState(file)).toBeNull()
+  })
 })
