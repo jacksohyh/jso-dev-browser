@@ -6,12 +6,13 @@ Builds on: `2026-07-08-dev-browser-design.md` (v1, complete)
 
 ## Purpose
 
-Four additions to the completed dev-browser, all serving the multi-account developer workflow:
+Five additions to the completed dev-browser, all serving the multi-account developer workflow:
 
 1. **Session grouping** — visually mark tabs that share a session, and keep them contiguous.
 2. **Switch hotkeys** — forward-cycle tabs and groups from the keyboard.
 3. **Password manager** — Chrome-style save + autofill, OS-encrypted, multiple accounts per site.
 4. **Settings cog** — a top-right settings entry point hosting the password manager and a shortcuts reference.
+5. **Merged title bar** — remove the OS title bar and host the chrome in that space (Chrome-style), reclaiming ~30px.
 
 ## 1. Session grouping
 
@@ -71,7 +72,7 @@ Forward-only, wrapping. Added to the existing `wireShortcuts` in `src/main/index
 
 ## 4. Settings cog
 
-- A cog button at the right end of the group row (`GroupBar`).
+- A cog button at the right end of the group row (`GroupBar`), placed to the **left of the window-controls-overlay area** (see §5) so it never sits under the native min/max/close buttons.
 - Opens a settings surface. Chosen approach: a **separate `BrowserWindow`** loading a new `settings.html` renderer entry (mirrors the API-panel window pattern already in the codebase — avoids overlaying the WebContentsView, which we learned can't be covered by DOM).
 - v1.1 contents:
   - **Saved Passwords** — list grouped by origin; each row shows username with reveal (calls `autofill:secret`), copy, and delete. Also lists/clears `neverOrigins`.
@@ -83,6 +84,22 @@ Forward-only, wrapping. Added to the existing `wireShortcuts` in `src/main/index
 - `src/main/settingsWindow.ts` (new) — single-instance window manager.
 - `electron.vite.config.ts` — add `settings` and the `autofill-preload` build inputs.
 - `src/main/index.ts` — wire the cog IPC + settings/vault/autofill managers.
+
+## 5. Merged title bar (frameless + window controls overlay)
+
+Remove the OS title bar and let the existing chrome rows occupy that space, Chrome-style.
+
+- `BrowserWindow` gains `titleBarStyle: 'hidden'` and `titleBarOverlay: { color: '#14161b', symbolColor: '#d8dbe2', height: 32 }` so Windows still draws working native min/max/close buttons in the top-right, themed to match. `CHROME_HEIGHT` (96) is unchanged — the group row simply becomes the top-most row with no OS bar above it, so the whole window is ~30px shorter for the same content.
+- The **group row** is marked `-webkit-app-region: drag` so the user can move the window by it. Every interactive element inside it — group chips, the `+` button, the settings cog — must be `-webkit-app-region: no-drag` so clicks/right-clicks still register.
+- The group row reserves right-side padding equal to the overlay width so chips never render under the native buttons. On Windows the overlay is on the right; the settings cog sits just left of it (still inside the row, `no-drag`).
+- The tab and address rows are normal (no drag region) — click targets there are unaffected.
+
+### Files
+- `src/main/index.ts` — `createWindow` options (`titleBarStyle`, `titleBarOverlay`).
+- `src/renderer/src/chrome/styles.css` — drag/no-drag regions, right padding on `.groups`.
+- `src/renderer/src/chrome/GroupBar.tsx` — cog placement; ensure `no-drag` on interactive children.
+
+Risk note: `WebContentsView` layout still starts at `y = CHROME_HEIGHT`; the overlay only affects the top-right corner of the chrome renderer, not the page view. No change to `TabManager.layout()`.
 
 ## Architecture summary
 
@@ -96,7 +113,7 @@ New main modules (each one responsibility, testable in isolation): `vault.ts` (e
 
 ## Testing
 - Unit (vitest, no Electron): `sessionColors` assignment; `AppStore.duplicateTab` contiguity + `nextTab`/`nextGroup` wrap-around; `Vault` CRUD/dedupe/ignore-list/keying with a mocked `safeStorage`.
-- Manual (Electron): save prompt on a real login submit; dropdown fill of one of multiple accounts; no cross-origin iframe fill; encrypted-at-rest check (inspect `passwords.json` — password unreadable); Ctrl+Tab / Ctrl+Shift+Tab cycling; session color bars on duplicates; settings window password reveal/delete.
+- Manual (Electron): save prompt on a real login submit; dropdown fill of one of multiple accounts; no cross-origin iframe fill; encrypted-at-rest check (inspect `passwords.json` — password unreadable); Ctrl+Tab / Ctrl+Shift+Tab cycling; session color bars on duplicates; settings window password reveal/delete; merged title bar — native min/max/close work, window drags by the group row, no chip renders under the buttons.
 
 ## Out of scope (v1.1)
 Master-password lock, password generation, breach/reuse warnings, sync, import/export, autofill of non-login fields (addresses/cards), reverse-cycle hotkeys, drag-reorder of tabs.
