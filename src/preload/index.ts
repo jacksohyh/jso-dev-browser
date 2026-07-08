@@ -61,7 +61,19 @@ const api = {
     ipcRenderer.invoke('panel:detail', tabId, requestId),
   getResponseBody: (tabId: string, requestId: string): Promise<string | null> =>
     ipcRenderer.invoke('panel:body', tabId, requestId),
-  clearRequests: (tabId: string): Promise<void> => ipcRenderer.invoke('panel:clear', tabId)
+  clearRequests: (tabId: string): Promise<void> => ipcRenderer.invoke('panel:clear', tabId),
+
+  // --- settings / autofill save prompt ---
+  openSettings: (): Promise<void> => ipcRenderer.invoke('settings:open'),
+  onSavePrompt: (cb: (data: { origin: string; username: string }) => void) => {
+    const h = (_e: IpcRendererEvent, d: { origin: string; username: string }) => cb(d)
+    ipcRenderer.on('chrome:savePrompt', h)
+    return (): void => {
+      ipcRenderer.removeListener('chrome:savePrompt', h)
+    }
+  },
+  savePassword: (accept: boolean): Promise<void> => ipcRenderer.invoke('save:decide', accept),
+  neverSave: (): Promise<void> => ipcRenderer.invoke('save:never')
 }
 
 export type DevBrowserApi = typeof api

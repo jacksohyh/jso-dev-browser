@@ -1,5 +1,6 @@
 import { BrowserWindow, WebContentsView, session } from 'electron'
 import type { WebContents } from 'electron'
+import { join } from 'node:path'
 import type { TabInfo } from '../shared/types'
 import type { AppStore } from './state'
 
@@ -48,7 +49,12 @@ export class TabManager {
   }
 
   private openTab(tab: TabInfo): WebContentsView {
-    const view = new WebContentsView({ webPreferences: { partition: tab.partition } })
+    const view = new WebContentsView({
+      webPreferences: {
+        partition: tab.partition,
+        preload: join(__dirname, '../preload/autofill-preload.js')
+      }
+    })
     this.views.set(tab.id, view)
     const wc = view.webContents
     // OAuth/login popups: explicitly allow window.open so sign-in flows work.
