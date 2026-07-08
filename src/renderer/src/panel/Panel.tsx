@@ -9,6 +9,9 @@ interface StoredRequestView extends RequestSummary {
 
 function pretty(s: string | null): string {
   if (s == null || s === '') return '—'
+  if (s.length > 200_000) {
+    return s.slice(0, 200_000) + `\n… (${s.length.toLocaleString()} chars total, truncated)`
+  }
   try {
     return JSON.stringify(JSON.parse(s), null, 2)
   } catch {
@@ -45,14 +48,27 @@ function Headers({ headers }: { headers: Record<string, string> }) {
 function Detail({ tabId, requestId }: { tabId: string; requestId: string }) {
   const [detail, setDetail] = useState<StoredRequestView | null>(null)
   const [body, setBody] = useState<string | null>(null)
+  const [missing, setMissing] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     setDetail(null)
     setBody(null)
-    window.devb.getRequestDetail(tabId, requestId).then((d) => setDetail(d as StoredRequestView | null))
-    window.devb.getResponseBody(tabId, requestId).then(setBody)
+    setMissing(false)
+    window.devb.getRequestDetail(tabId, requestId).then((d) => {
+      if (cancelled) return
+      if (d == null) setMissing(true)
+      else setDetail(d as StoredRequestView)
+    })
+    window.devb.getResponseBody(tabId, requestId).then((b) => {
+      if (!cancelled) setBody(b)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [tabId, requestId])
 
+  if (missing) return <div className="detail dim">request no longer in the buffer</div>
   if (!detail) return <div className="detail dim">loading…</div>
   return (
     <div className="detail">
@@ -88,20 +104,26 @@ export function Panel({ tabId, initialCapturing }: { tabId: string; initialCaptu
   const [apiOnly, setApiOnly] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const followRef = useRef(true)
+  const [version, setVersion] = useState(0)
 
   useEffect(() => {
     window.devb.panelInit(tabId).then((r) => {
       setRequests(r.requests)
       setCapturing(r.capturing)
+      setVersion((v) => v + 1)
     })
-    return window.devb.onRequests(setRequests)
+    return window.devb.onRequests((r) => {
+      setRequests(r)
+      setVersion((v) => v + 1)
+    })
   }, [tabId])
 
-  // Keep the list pinned to the newest entries.
+  // Follow the newest entries, but only while the user is at the bottom.
   useEffect(() => {
     const el = listRef.current
-    if (el) el.scrollTop = el.scrollHeight
-  }, [requests.length])
+    if (el && followRef.current) el.scrollTop = el.scrollHeight
+  }, [version])
 
   const shown = requests.filter(
     (r) =>
@@ -128,7 +150,14 @@ export function Panel({ tabId, initialCapturing }: { tabId: string; initialCaptu
         {!capturing && <span className="warn">capture unavailable (close DevTools and reopen panel)</span>}
       </div>
       <div className="split">
-        <div className="list" ref={listRef}>
+        <div
+          className="list"
+          ref={listRef}
+          onScroll={() => {
+            const el = listRef.current
+            if (el) followRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 40
+          }}
+        >
           <table>
             <tbody>
               {shown.map((r) => (
