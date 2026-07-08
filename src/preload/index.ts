@@ -73,7 +73,29 @@ const api = {
     }
   },
   savePassword: (accept: boolean): Promise<void> => ipcRenderer.invoke('save:decide', accept),
-  neverSave: (): Promise<void> => ipcRenderer.invoke('save:never')
+  neverSave: (): Promise<void> => ipcRenderer.invoke('save:never'),
+
+  // --- settings window ---
+  settingsList: (): Promise<{
+    origins: { origin: string; logins: { id: string; username: string }[] }[]
+    available: boolean
+  }> => ipcRenderer.invoke('settings:list'),
+  settingsReveal: (id: string): Promise<string | null> => ipcRenderer.invoke('settings:reveal', id),
+  settingsDelete: (
+    id: string
+  ): Promise<{
+    origins: { origin: string; logins: { id: string; username: string }[] }[]
+    available: boolean
+  }> => ipcRenderer.invoke('settings:delete', id),
+  settingsGetZoom: (): Promise<number> => ipcRenderer.invoke('settings:getZoom'),
+  settingsSetZoom: (level: number): Promise<void> => ipcRenderer.invoke('settings:setZoom', level),
+  onSettingsZoom: (cb: (level: number) => void) => {
+    const h = (_e: IpcRendererEvent, z: number) => cb(z)
+    ipcRenderer.on('settings:zoom', h)
+    return (): void => {
+      ipcRenderer.removeListener('settings:zoom', h)
+    }
+  }
 }
 
 export type DevBrowserApi = typeof api

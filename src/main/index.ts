@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage } from 'electron'
 import type { WebContents } from 'electron'
 import { existsSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
@@ -7,11 +7,17 @@ import { PanelManager } from './apiPanel'
 import { AppStore } from './state'
 import { debouncedSaver, loadState, saveState } from './stateFile'
 import { TabManager } from './tabs'
+import { Vault } from './vault'
+import { registerAutofill } from './autofillBridge'
+import { SettingsWindow } from './settingsWindow'
 
 let win: BrowserWindow
 let store: AppStore
 let tabs: TabManager
 let panels: PanelManager
+let settings: SettingsWindow
+let vault: Vault
+let pendingSave: { origin: string; username: string; password: string } | null = null
 
 const stateFile = () => join(app.getPath('userData'), 'state.json')
 
@@ -37,6 +43,7 @@ function syncShownTab() {
 function applyZoom(level: number) {
   store.setZoom(level) // clamps + guards + emits (persist via onChange)
   tabs.setZoomAll(store.state.zoom)
+  settings.pushZoom(store.state.zoom)
 }
 
 /** Startup safety net: delete partition dirs no tab references anymore. */
@@ -121,6 +128,10 @@ function wireShortcuts(wc: WebContents) {
     } else if (ctrl && key === '0') {
       event.preventDefault()
       applyZoom(0)
+    } else if (ctrl && key === 'tab') {
+      event.preventDefault()
+      if (input.shift) store.nextGroup()
+      else store.nextTab()
     }
   })
 }
@@ -214,6 +225,16 @@ function registerIpc() {
       p.win.webContents.send('panel:requests', [])
     }
   })
+
+  ipcMain.handle('settings:open', () => settings.open())
+  ipcMain.handle('save:decide', (_e, accept: boolean) => {
+    if (accept && pendingSave) vault.add(pendingSave.origin, pendingSave.username, pendingSave.password)
+    pendingSave = null
+  })
+  ipcMain.handle('save:never', () => {
+    if (pendingSave) vault.never(pendingSave.origin)
+    pendingSave = null
+  })
 }
 
 function createWindow() {
@@ -238,6 +259,21 @@ app.whenReady().then(() => {
   createWindow()
   tabs = new TabManager(win, store, { wireShortcuts })
   panels = new PanelManager((tabId) => tabs.view(tabId)?.webContents)
+
+  vault = new Vault(join(app.getPath('userData'), 'passwords.json'), safeStorage)
+  settings = new SettingsWindow(
+    vault,
+    () => store.state.zoom,
+    (level) => applyZoom(level)
+  )
+  registerAutofill(
+    vault,
+    () => win,
+    (data) => {
+      pendingSave = data
+      win.webContents.send('chrome:savePrompt', { origin: data.origin, username: data.username })
+    }
+  )
 
   tabs.onZoomStep = (delta) => applyZoom(store.state.zoom + delta)
   tabs.setZoomAll(store.state.zoom) // apply persisted zoom to any views

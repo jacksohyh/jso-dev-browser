@@ -46,7 +46,7 @@ export function GroupBar({ groups, activeId }: { groups: GroupInfo[]; activeId: 
         +
       </button>
       <span className="spacer" />
-      <button className="cog" title="Settings" onClick={() => (window.devb as any).openSettings?.()}>
+      <button className="cog" title="Settings" onClick={() => window.devb.openSettings()}>
         ⚙
       </button>
     </div>
