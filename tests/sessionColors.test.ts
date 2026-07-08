@@ -13,28 +13,30 @@ describe('assignSessionColors', () => {
     expect(colors.get('p2')).toBeNull()
   })
 
-  it('assigns a palette color to shared partitions, stable by first appearance', () => {
-    const groups = [
-      group('g', [tab('a', 'shared'), tab('b', 'shared'), tab('c', 'solo'), tab('d', 'other'), tab('e', 'other')])
-    ]
-    const colors = assignSessionColors(groups)
-    expect(colors.get('shared')).toBe(SESSION_PALETTE[0])
-    expect(colors.get('other')).toBe(SESSION_PALETTE[1])
+  it('assigns a palette color to partitions shared by 2+ tabs', () => {
+    const colors = assignSessionColors([group('g', [tab('a', 'shared'), tab('b', 'shared'), tab('c', 'solo')])])
+    expect(SESSION_PALETTE).toContain(colors.get('shared'))
     expect(colors.get('solo')).toBeNull()
   })
 
   it('counts shared partitions across all groups', () => {
-    const groups = [group('g1', [tab('a', 'p')]), group('g2', [tab('b', 'p')])]
-    const colors = assignSessionColors(groups)
-    expect(colors.get('p')).toBe(SESSION_PALETTE[0])
+    const colors = assignSessionColors([group('g1', [tab('a', 'p')]), group('g2', [tab('b', 'p')])])
+    expect(SESSION_PALETTE).toContain(colors.get('p'))
   })
 
-  it('wraps palette when more than 8 shared partitions exist', () => {
-    const tabs: any[] = []
-    for (let i = 0; i < 9; i++) {
-      tabs.push(tab(`a${i}`, `p${i}`), tab(`b${i}`, `p${i}`))
-    }
-    const colors = assignSessionColors([group('g', tabs)])
-    expect(colors.get('p8')).toBe(SESSION_PALETTE[8 % SESSION_PALETTE.length])
+  it('a partition color depends only on its own id — untouched sessions keep their color under churn', () => {
+    const before = assignSessionColors([
+      group('g', [tab('a', 'shared'), tab('b', 'shared'), tab('c', 'other'), tab('d', 'other')])
+    ])
+    // 'shared' drops to a single tab (solo); 'other' is untouched
+    const after = assignSessionColors([group('g', [tab('a', 'shared'), tab('c', 'other'), tab('d', 'other')])])
+    expect(after.get('other')).toBe(before.get('other'))
+    expect(after.get('shared')).toBeNull()
+  })
+
+  it('is deterministic: same partition id maps to the same color regardless of context', () => {
+    const c1 = assignSessionColors([group('g', [tab('a', 'p'), tab('b', 'p')])])
+    const c2 = assignSessionColors([group('g2', [tab('x', 'p'), tab('y', 'p')])])
+    expect(c1.get('p')).toBe(c2.get('p'))
   })
 })
