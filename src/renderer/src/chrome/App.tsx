@@ -20,7 +20,7 @@ export function App() {
   return (
     <>
       <GroupBar groups={state.groups} activeId={group.id} />
-      <TabBar group={group} activeTabId={activeTabId} />
+      <TabBar group={group} activeTabId={activeTabId} groups={state.groups} />
       <AddressBar tab={activeTab} />
     </>
   )

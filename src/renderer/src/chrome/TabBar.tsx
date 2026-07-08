@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { GroupInfo, TabInfo } from '../../../shared/types'
 import { EditableLabel } from './EditableLabel'
+import { assignSessionColors } from './sessionColors'
 
-function TabChip({ tab, active }: { tab: TabInfo; active: boolean }) {
+function TabChip({ tab, active, color }: { tab: TabInfo; active: boolean; color: string | null }) {
   const [editing, setEditing] = useState(false)
   useEffect(
     () =>
@@ -14,6 +15,7 @@ function TabChip({ tab, active }: { tab: TabInfo; active: boolean }) {
   return (
     <div
       className={'chip' + (active ? ' active' : '')}
+      style={color ? { borderTop: `2px solid ${color}` } : undefined}
       onClick={() => window.devb.activateTab(tab.id)}
       onDoubleClick={() => setEditing(true)}
       onContextMenu={(e) => {
@@ -46,11 +48,20 @@ function TabChip({ tab, active }: { tab: TabInfo; active: boolean }) {
   )
 }
 
-export function TabBar({ group, activeTabId }: { group: GroupInfo; activeTabId: string | null }) {
+export function TabBar({
+  group,
+  activeTabId,
+  groups
+}: {
+  group: GroupInfo
+  activeTabId: string | null
+  groups: GroupInfo[]
+}) {
+  const colors = assignSessionColors(groups)
   return (
     <div className="row tabs">
       {group.tabs.map((t) => (
-        <TabChip key={t.id} tab={t} active={t.id === activeTabId} />
+        <TabChip key={t.id} tab={t} active={t.id === activeTabId} color={colors.get(t.partition) ?? null} />
       ))}
       <button className="add" title="New tab (fresh session)" onClick={() => window.devb.addTab(group.id)}>
         +
