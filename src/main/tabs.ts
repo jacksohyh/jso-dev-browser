@@ -27,6 +27,8 @@ export class TabManager {
   // tabs therefore hold many renderer processes — deliberate trade-off for a dev tool.
   private views = new Map<string, WebContentsView>()
   private shownTabId: string | null = null
+  private zoom = 0
+  onZoomStep?: (delta: number) => void
 
   constructor(
     private win: BrowserWindow,
@@ -38,6 +40,11 @@ export class TabManager {
 
   view(tabId: string): WebContentsView | undefined {
     return this.views.get(tabId)
+  }
+
+  setZoomAll(level: number) {
+    this.zoom = level
+    for (const view of this.views.values()) view.webContents.setZoomLevel(level)
   }
 
   private openTab(tab: TabInfo): WebContentsView {
@@ -61,6 +68,10 @@ export class TabManager {
     wc.on('did-fail-load', (_e, code, desc, failedUrl, isMainFrame) => {
       // -3 = ERR_ABORTED (normal during quick re-navigation) — not an error
       if (isMainFrame && code !== -3) wc.loadURL(errorPageUrl(failedUrl, `${desc} (${code})`))
+    })
+    wc.on('did-finish-load', () => wc.setZoomLevel(this.zoom))
+    wc.on('zoom-changed', (_e, dir: 'in' | 'out') => {
+      this.onZoomStep?.(dir === 'in' ? 0.5 : -0.5)
     })
     this.events.wireShortcuts(wc)
     if (tab.url && tab.url !== 'about:blank') wc.loadURL(tab.url)

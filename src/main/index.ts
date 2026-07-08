@@ -34,6 +34,11 @@ function syncShownTab() {
   else tabs.hideCurrent()
 }
 
+function applyZoom(level: number) {
+  store.setZoom(level) // clamps + guards + emits (persist via onChange)
+  tabs.setZoomAll(store.state.zoom)
+}
+
 /** Startup safety net: delete partition dirs no tab references anymore. */
 function cleanOrphanPartitions() {
   const dir = join(app.getPath('userData'), 'Partitions')
@@ -107,6 +112,15 @@ function wireShortcuts(wc: WebContents) {
     } else if (ctrl && key === 'r') {
       event.preventDefault()
       if (tab) tabs.reload(tab.id)
+    } else if (ctrl && (key === '=' || key === '+')) {
+      event.preventDefault()
+      applyZoom(store.state.zoom + 0.5)
+    } else if (ctrl && key === '-') {
+      event.preventDefault()
+      applyZoom(store.state.zoom - 0.5)
+    } else if (ctrl && key === '0') {
+      event.preventDefault()
+      applyZoom(0)
     }
   })
 }
@@ -224,6 +238,9 @@ app.whenReady().then(() => {
   createWindow()
   tabs = new TabManager(win, store, { wireShortcuts })
   panels = new PanelManager((tabId) => tabs.view(tabId)?.webContents)
+
+  tabs.onZoomStep = (delta) => applyZoom(store.state.zoom + delta)
+  tabs.setZoomAll(store.state.zoom) // apply persisted zoom to any views
 
   store.onChange = () => {
     syncShownTab()
