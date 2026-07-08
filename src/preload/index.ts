@@ -44,7 +44,9 @@ const api = {
   onRequests: (cb: (requests: RequestSummary[]) => void) => {
     const h = (_e: IpcRendererEvent, r: RequestSummary[]) => cb(r)
     ipcRenderer.on('panel:requests', h)
-    return () => ipcRenderer.removeListener('panel:requests', h)
+    return (): void => {
+      ipcRenderer.removeListener('panel:requests', h)
+    }
   },
   getRequestDetail: (tabId: string, requestId: string): Promise<unknown> =>
     ipcRenderer.invoke('panel:detail', tabId, requestId),
