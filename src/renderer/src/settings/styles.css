@@ -64,6 +64,16 @@ button:hover {
 .dim {
   color: #5c6370;
 }
+.cap-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  line-height: 1.4;
+  max-width: 460px;
+}
+.cap-toggle input {
+  margin-top: 2px;
+}
 .keys {
   border-collapse: collapse;
 }

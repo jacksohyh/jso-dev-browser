@@ -46,8 +46,8 @@ export function AddressBar({ tab }: { tab: TabInfo | null }) {
           }
         }}
       />
-      <button disabled={!tab} title="API panel (F12)" onClick={() => tab && window.devb.togglePanel()}>
-        API
+      <button disabled={!tab} title="Network panel (F12)" onClick={() => tab && window.devb.togglePanel()}>
+        Network
       </button>
     </div>
   )
