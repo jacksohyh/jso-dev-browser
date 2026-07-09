@@ -9,9 +9,7 @@ interface StoredRequestView extends RequestSummary {
 
 function pretty(s: string | null): string {
   if (s == null || s === '') return '—'
-  if (s.length > 200_000) {
-    return s.slice(0, 200_000) + `\n… (${s.length.toLocaleString()} chars total, truncated)`
-  }
+  if (s.length > 200_000) return s.slice(0, 200_000) + `\n… (${s.length.toLocaleString()} chars total, truncated)`
   try {
     return JSON.stringify(JSON.parse(s), null, 2)
   } catch {
@@ -45,7 +43,7 @@ function Headers({ headers }: { headers: Record<string, string> }) {
   )
 }
 
-function Detail({ tabId, requestId }: { tabId: string; requestId: string }) {
+function Detail({ requestId }: { requestId: string }) {
   const [detail, setDetail] = useState<StoredRequestView | null>(null)
   const [body, setBody] = useState<string | null>(null)
   const [missing, setMissing] = useState(false)
@@ -55,18 +53,18 @@ function Detail({ tabId, requestId }: { tabId: string; requestId: string }) {
     setDetail(null)
     setBody(null)
     setMissing(false)
-    window.devb.getRequestDetail(tabId, requestId).then((d) => {
+    window.devb.getRequestDetail(requestId).then((d) => {
       if (cancelled) return
       if (d == null) setMissing(true)
       else setDetail(d as StoredRequestView)
     })
-    window.devb.getResponseBody(tabId, requestId).then((b) => {
+    window.devb.getResponseBody(requestId).then((b) => {
       if (!cancelled) setBody(b)
     })
     return () => {
       cancelled = true
     }
-  }, [tabId, requestId])
+  }, [requestId])
 
   if (missing) return <div className="detail dim">request no longer in the buffer</div>
   if (!detail) return <div className="detail dim">loading…</div>
@@ -97,29 +95,33 @@ function Detail({ tabId, requestId }: { tabId: string; requestId: string }) {
   )
 }
 
-export function Panel({ tabId, initialCapturing }: { tabId: string; initialCapturing: boolean }) {
+export function Panel() {
+  const [tabId, setTabId] = useState<string | null>(null)
+  const [tabName, setTabName] = useState('')
+  const [capturing, setCapturing] = useState(false)
   const [requests, setRequests] = useState<RequestSummary[]>([])
-  const [capturing, setCapturing] = useState(initialCapturing)
   const [filter, setFilter] = useState('')
   const [apiOnly, setApiOnly] = useState(true)
   const [selected, setSelected] = useState<string | null>(null)
-  const listRef = useRef<HTMLDivElement>(null)
   const followRef = useRef(true)
   const [version, setVersion] = useState(0)
+  const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    window.devb.panelInit(tabId).then((r) => {
-      setRequests(r.requests)
-      setCapturing(r.capturing)
+    const apply = (s: { tabId: string | null; tabName: string; capturing: boolean; requests: RequestSummary[] }) => {
+      setTabId((prev) => {
+        if (prev !== s.tabId) setSelected(null) // reset selection when the shown tab changes
+        return s.tabId
+      })
+      setTabName(s.tabName)
+      setCapturing(s.capturing)
+      setRequests(s.requests)
       setVersion((v) => v + 1)
-    })
-    return window.devb.onRequests((r) => {
-      setRequests(r)
-      setVersion((v) => v + 1)
-    })
-  }, [tabId])
+    }
+    window.devb.panelInit().then(apply)
+    return window.devb.onPanelState(apply)
+  }, [])
 
-  // Follow the newest entries, but only while the user is at the bottom.
   useEffect(() => {
     const el = listRef.current
     if (el && followRef.current) el.scrollTop = el.scrollHeight
@@ -134,20 +136,22 @@ export function Panel({ tabId, initialCapturing }: { tabId: string; initialCaptu
   return (
     <div className="panel">
       <div className="toolbar">
+        <span className="tabname" title={tabName}>
+          {tabName || 'no tab'}
+        </span>
         <input placeholder="filter url, e.g. /api/" value={filter} onChange={(e) => setFilter(e.target.value)} />
         <label>
-          <input type="checkbox" checked={apiOnly} onChange={(e) => setApiOnly(e.target.checked)} /> fetch/XHR
-          only
+          <input type="checkbox" checked={apiOnly} onChange={(e) => setApiOnly(e.target.checked)} /> fetch/XHR only
         </label>
         <button
           onClick={() => {
-            window.devb.clearRequests(tabId)
+            window.devb.clearRequests()
             setSelected(null)
           }}
         >
           Clear
         </button>
-        {!capturing && <span className="warn">capture unavailable (close DevTools and reopen panel)</span>}
+        {!capturing && <span className="warn">not capturing (open DevTools closed? enable Always capture in Settings)</span>}
       </div>
       <div className="split">
         <div
@@ -178,7 +182,7 @@ export function Panel({ tabId, initialCapturing }: { tabId: string; initialCaptu
           </table>
           {shown.length === 0 && <p className="dim empty">no requests yet — interact with the page</p>}
         </div>
-        {selected && <Detail tabId={tabId} requestId={selected} />}
+        {selected && <Detail requestId={selected} />}
       </div>
     </div>
   )

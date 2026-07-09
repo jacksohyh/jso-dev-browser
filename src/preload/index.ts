@@ -52,24 +52,28 @@ const api = {
   back: (id: string): Promise<void> => ipcRenderer.invoke('tab:back', id),
   forward: (id: string): Promise<void> => ipcRenderer.invoke('tab:forward', id),
   reload: (id: string): Promise<void> => ipcRenderer.invoke('tab:reload', id),
-  togglePanel: (id: string): Promise<void> => ipcRenderer.invoke('panel:toggle', id),
+  togglePanel: (): Promise<void> => ipcRenderer.invoke('panel:toggle'),
   showTabMenu: (id: string): Promise<void> => ipcRenderer.invoke('menu:tab', id),
 
   // --- API panel window ---
-  panelInit: (tabId: string): Promise<{ requests: RequestSummary[]; capturing: boolean }> =>
-    ipcRenderer.invoke('panel:init', tabId),
-  onRequests: (cb: (requests: RequestSummary[]) => void) => {
-    const h = (_e: IpcRendererEvent, r: RequestSummary[]) => cb(r)
-    ipcRenderer.on('panel:requests', h)
+  panelInit: (): Promise<{ tabId: string | null; tabName: string; capturing: boolean; requests: RequestSummary[] }> =>
+    ipcRenderer.invoke('panel:init'),
+  onPanelState: (
+    cb: (s: { tabId: string | null; tabName: string; capturing: boolean; requests: RequestSummary[] }) => void
+  ) => {
+    const h = (_e: IpcRendererEvent, s: any) => cb(s)
+    ipcRenderer.on('panel:state', h)
     return (): void => {
-      ipcRenderer.removeListener('panel:requests', h)
+      ipcRenderer.removeListener('panel:state', h)
     }
   },
-  getRequestDetail: (tabId: string, requestId: string): Promise<unknown> =>
-    ipcRenderer.invoke('panel:detail', tabId, requestId),
-  getResponseBody: (tabId: string, requestId: string): Promise<string | null> =>
-    ipcRenderer.invoke('panel:body', tabId, requestId),
-  clearRequests: (tabId: string): Promise<void> => ipcRenderer.invoke('panel:clear', tabId),
+  getRequestDetail: (requestId: string): Promise<unknown> => ipcRenderer.invoke('panel:detail', requestId),
+  getResponseBody: (requestId: string): Promise<string | null> => ipcRenderer.invoke('panel:body', requestId),
+  clearRequests: (): Promise<void> => ipcRenderer.invoke('panel:clear'),
+
+  // --- always-capture ---
+  getAlwaysCapture: (): Promise<boolean> => ipcRenderer.invoke('capture:get'),
+  setAlwaysCapture: (on: boolean): Promise<void> => ipcRenderer.invoke('capture:set', on),
 
   // --- settings / autofill save prompt ---
   openSettings: (): Promise<void> => ipcRenderer.invoke('settings:open'),

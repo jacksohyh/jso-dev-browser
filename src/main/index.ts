@@ -40,6 +40,11 @@ function syncShownTab() {
   else tabs.hideCurrent()
 }
 
+function activeTabInfo(): { id: string; name: string } | null {
+  const t = store.activeTab()
+  return t ? { id: t.id, name: t.name } : null
+}
+
 function promptNextSave() {
   const next = saveQueue[0]
   if (next && win && !win.isDestroyed()) {
@@ -90,9 +95,8 @@ function deleteGroup(groupId: string) {
   syncShownTab()
 }
 
-function togglePanel(tabId: string) {
-  const found = safe(() => store.findTab(tabId))
-  if (found) panels.toggle(tabId, found.tab.name)
+function togglePanel() {
+  panels.toggle(activeTabInfo())
 }
 
 function openRealDevtools(tabId: string) {
@@ -122,7 +126,7 @@ function wireShortcuts(wc: WebContents) {
       if (tab) openRealDevtools(tab.id)
     } else if (key === 'f12' && !ctrl && !input.shift) {
       event.preventDefault()
-      if (tab) togglePanel(tab.id)
+      togglePanel()
     } else if (ctrl && key === 'r') {
       event.preventDefault()
       if (tab) tabs.reload(tab.id)
@@ -216,25 +220,16 @@ function registerIpc() {
     ]).popup({ window: win })
   })
 
-  ipcMain.handle('panel:toggle', (_e, id: string) => togglePanel(id))
-  ipcMain.handle('panel:init', (_e, tabId: string) => {
-    const p = panels.get(tabId)
-    return p
-      ? { requests: p.capture.log.summaries(), capturing: p.capture.attached }
-      : { requests: [], capturing: false }
-  })
-  ipcMain.handle('panel:detail', (_e, tabId: string, requestId: string) => {
-    return panels.get(tabId)?.capture.log.get(requestId) ?? null
-  })
-  ipcMain.handle('panel:body', (_e, tabId: string, requestId: string) => {
-    return panels.get(tabId)?.capture.responseBody(requestId) ?? null
-  })
-  ipcMain.handle('panel:clear', (_e, tabId: string) => {
-    const p = panels.get(tabId)
-    if (p) {
-      p.capture.log.clear()
-      p.win.webContents.send('panel:requests', [])
-    }
+  ipcMain.handle('panel:toggle', () => togglePanel())
+  ipcMain.handle('panel:init', () => panels.currentState())
+  ipcMain.handle('panel:detail', (_e, requestId: string) => panels.detailForShown(requestId))
+  ipcMain.handle('panel:body', (_e, requestId: string) => panels.bodyForShown(requestId))
+  ipcMain.handle('panel:clear', () => panels.clearShown())
+
+  ipcMain.handle('capture:get', () => store.state.alwaysCapture)
+  ipcMain.handle('capture:set', (_e, on: boolean) => {
+    store.setAlwaysCapture(on)
+    panels.setAlwaysCapture(on, tabs.viewedTabIds())
   })
 
   ipcMain.handle('settings:open', () => settings?.open())
@@ -274,8 +269,12 @@ app.whenReady().then(() => {
   const scheduleSave = debouncedSaver(stateFile(), () => store.state)
 
   createWindow()
-  tabs = new TabManager(win, store, { wireShortcuts })
   panels = new PanelManager((tabId) => tabs.view(tabId)?.webContents)
+  panels.alwaysCapture = store.state.alwaysCapture
+  const onViewReady = (tabId: string) => {
+    if (store.state.alwaysCapture) panels.ensureCapture(tabId)
+  }
+  tabs = new TabManager(win, store, { wireShortcuts, onViewReady })
 
   vault = new Vault(join(app.getPath('userData'), 'passwords.json'), safeStorage)
   settings = new SettingsWindow(
@@ -293,6 +292,7 @@ app.whenReady().then(() => {
 
   store.onChange = () => {
     syncShownTab()
+    if (panels.isOpen()) panels.bind(activeTabInfo())
     pushState()
     scheduleSave()
   }

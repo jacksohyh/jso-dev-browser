@@ -21,6 +21,7 @@ export function errorPageUrl(failedUrl: string, description: string): string {
 
 export interface TabManagerEvents {
   wireShortcuts: (wc: WebContents) => void
+  onViewReady?: (tabId: string) => void
 }
 
 export class TabManager {
@@ -41,6 +42,10 @@ export class TabManager {
 
   view(tabId: string): WebContentsView | undefined {
     return this.views.get(tabId)
+  }
+
+  viewedTabIds(): string[] {
+    return [...this.views.keys()]
   }
 
   setZoomAll(level: number) {
@@ -80,6 +85,7 @@ export class TabManager {
       this.onZoomStep?.(dir === 'in' ? 0.5 : -0.5)
     })
     this.events.wireShortcuts(wc)
+    this.events.onViewReady?.(tab.id)
     if (tab.url && tab.url !== 'about:blank') wc.loadURL(tab.url)
     return view
   }
