@@ -38,11 +38,17 @@ body {
   white-space: nowrap;
   max-width: 220px;
   color: #9aa0ab;
-  border-top: 2px solid transparent;
 }
 .chip .label {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.session-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 8px;
 }
 .chip:hover {
   background: #262b33;

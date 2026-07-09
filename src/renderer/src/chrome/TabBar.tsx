@@ -3,7 +3,7 @@ import type { GroupInfo, TabInfo } from '../../../shared/types'
 import { EditableLabel } from './EditableLabel'
 import { assignSessionColors } from './sessionColors'
 
-function TabChip({ tab, active, color }: { tab: TabInfo; active: boolean; color: string | null }) {
+function TabChip({ tab, active }: { tab: TabInfo; active: boolean }) {
   const [editing, setEditing] = useState(false)
   useEffect(
     () =>
@@ -15,7 +15,6 @@ function TabChip({ tab, active, color }: { tab: TabInfo; active: boolean; color:
   return (
     <div
       className={'chip' + (active ? ' active' : '')}
-      style={color ? { borderTop: `2px solid ${color}` } : undefined}
       onClick={() => window.devb.activateTab(tab.id)}
       onDoubleClick={() => setEditing(true)}
       onContextMenu={(e) => {
@@ -58,11 +57,36 @@ export function TabBar({
   groups: GroupInfo[]
 }) {
   const colors = assignSessionColors(groups)
+
+  type Run = { key: string; color: string | null; tabs: TabInfo[] }
+  const runs: Run[] = []
+  for (const t of group.tabs) {
+    const color = colors.get(t.partition) ?? null
+    const last = runs[runs.length - 1]
+    if (last && last.color !== null && color !== null && last.tabs[0].partition === t.partition) {
+      last.tabs.push(t)
+    } else {
+      runs.push({ key: t.id, color, tabs: [t] })
+    }
+  }
+
   return (
     <div className="row tabs">
-      {group.tabs.map((t) => (
-        <TabChip key={t.id} tab={t} active={t.id === activeTabId} color={colors.get(t.partition) ?? null} />
-      ))}
+      {runs.map((run) =>
+        run.color && run.tabs.length >= 2 ? (
+          <span
+            key={run.key}
+            className="session-wrap"
+            style={{ border: `2px solid ${run.color}`, background: `${run.color}17` }}
+          >
+            {run.tabs.map((t) => (
+              <TabChip key={t.id} tab={t} active={t.id === activeTabId} />
+            ))}
+          </span>
+        ) : (
+          run.tabs.map((t) => <TabChip key={t.id} tab={t} active={t.id === activeTabId} />)
+        )
+      )}
       <button className="add" title="New tab (fresh session)" onClick={() => window.devb.addTab(group.id)}>
         +
       </button>
