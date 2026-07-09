@@ -7,27 +7,63 @@ function originOf(): string {
 // Autofill runs only in the top-level document; subframes stay inert.
 const isTopFrame = window.top === window
 
-function findUsername(form: HTMLFormElement, pw: HTMLInputElement): string {
-  const fields = Array.from(form.querySelectorAll('input')) as HTMLInputElement[]
+// --- Save capture: catch logins via submit, button-click, or Enter ---
+let lastSentKey = ''
+let lastSentAt = 0
+
+function usernameNear(pw: HTMLInputElement): string {
+  const form = pw.closest('form')
+  const scope: ParentNode = form ?? document
+  const fields = Array.from(scope.querySelectorAll('input')) as HTMLInputElement[]
   const pwIdx = fields.indexOf(pw)
   for (let i = pwIdx - 1; i >= 0; i--) {
     const t = (fields[i].type || '').toLowerCase()
     if (t === 'text' || t === 'email' || fields[i].autocomplete === 'username') return fields[i].value
   }
-  const named = form.querySelector<HTMLInputElement>('input[autocomplete="username"], input[type="email"]')
+  const named = scope.querySelector<HTMLInputElement>('input[autocomplete="username"], input[type="email"]')
   return named?.value ?? ''
 }
 
+function capture(pw: HTMLInputElement | null | undefined) {
+  if (!pw || !pw.value) return
+  const username = usernameNear(pw)
+  const key = username + ' ' + pw.value
+  const now = Date.now()
+  if (key === lastSentKey && now - lastSentAt < 2000) return // dedupe submit+click double-fire
+  lastSentKey = key
+  lastSentAt = now
+  ipcRenderer.send('autofill:captured', { origin: location.origin, username, password: pw.value })
+}
+
 if (isTopFrame) {
+  // 1) native form submit
   document.addEventListener(
     'submit',
     (e) => {
-      const form = e.target as HTMLElement
-      if (!(form instanceof HTMLFormElement)) return
-      const pw = form.querySelector<HTMLInputElement>('input[type="password"]')
-      if (!pw || !pw.value) return
-      const username = findUsername(form, pw)
-      ipcRenderer.send('autofill:captured', { origin: originOf(), username, password: pw.value })
+      const form = e.target
+      if (form instanceof HTMLFormElement) capture(form.querySelector<HTMLInputElement>('input[type="password"]'))
+    },
+    true
+  )
+  // 2) click on a submit-like control while a password field is filled (SPA logins)
+  document.addEventListener(
+    'click',
+    (e) => {
+      const el = e.target as HTMLElement
+      const btn = el && el.closest ? el.closest('button, [type="submit"], [role="button"], a') : null
+      if (!btn) return
+      const scope = (btn.closest('form') as ParentNode) ?? document
+      capture(scope.querySelector<HTMLInputElement>('input[type="password"]'))
+    },
+    true
+  )
+  // 3) Enter pressed inside a password field
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      if (e.key !== 'Enter') return
+      const el = e.target
+      if (el instanceof HTMLInputElement && el.type === 'password') capture(el)
     },
     true
   )
