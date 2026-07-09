@@ -91,6 +91,21 @@ body {
   flex: 1;
   overflow: auto;
   padding: 10px;
+  position: relative;
+}
+.detail-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: none;
+  border: none;
+  color: #9aa0ab;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+}
+.detail-close:hover {
+  color: #e06c75;
 }
 .detail h3 {
   margin: 0 0 4px;

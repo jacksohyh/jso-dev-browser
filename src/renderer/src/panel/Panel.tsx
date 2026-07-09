@@ -43,7 +43,7 @@ function Headers({ headers }: { headers: Record<string, string> }) {
   )
 }
 
-function Detail({ requestId }: { requestId: string }) {
+function Detail({ requestId, onClose }: { requestId: string; onClose: () => void }) {
   const [detail, setDetail] = useState<StoredRequestView | null>(null)
   const [body, setBody] = useState<string | null>(null)
   const [missing, setMissing] = useState(false)
@@ -70,6 +70,7 @@ function Detail({ requestId }: { requestId: string }) {
   if (!detail) return <div className="detail dim">loading…</div>
   return (
     <div className="detail">
+      <button className="detail-close" title="Close" onClick={onClose}>✕</button>
       <h3>
         {detail.method} {detail.status ?? ''} {detail.failed ? `FAILED: ${detail.failed}` : ''}
       </h3>
@@ -102,6 +103,7 @@ export function Panel() {
   const [requests, setRequests] = useState<RequestSummary[]>([])
   const [filter, setFilter] = useState('')
   const [apiOnly, setApiOnly] = useState(true)
+  const [alwaysCap, setAlwaysCap] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const followRef = useRef(true)
   const [version, setVersion] = useState(0)
@@ -119,6 +121,7 @@ export function Panel() {
       setVersion((v) => v + 1)
     }
     window.devb.panelInit().then(apply)
+    window.devb.getAlwaysCapture().then(setAlwaysCap)
     return window.devb.onPanelState(apply)
   }, [])
 
@@ -142,6 +145,18 @@ export function Panel() {
         <input placeholder="filter url, e.g. /api/" value={filter} onChange={(e) => setFilter(e.target.value)} />
         <label>
           <input type="checkbox" checked={apiOnly} onChange={(e) => setApiOnly(e.target.checked)} /> fetch/XHR only
+        </label>
+        <label title="Record every tab's requests from load (persists)">
+          <input
+            type="checkbox"
+            checked={alwaysCap}
+            onChange={async (e) => {
+              const on = e.target.checked
+              setAlwaysCap(on)
+              await window.devb.setAlwaysCapture(on)
+            }}
+          />{' '}
+          always capture
         </label>
         <button
           onClick={() => {
@@ -182,7 +197,7 @@ export function Panel() {
           </table>
           {shown.length === 0 && <p className="dim empty">no requests yet — interact with the page</p>}
         </div>
-        {selected && <Detail requestId={selected} />}
+        {selected && <Detail requestId={selected} onClose={() => setSelected(null)} />}
       </div>
     </div>
   )
