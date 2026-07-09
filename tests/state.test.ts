@@ -198,4 +198,18 @@ describe('AppStore', () => {
     expect(store.group(g.id).width).toBe(400)
     expect(calls).toBe(3)
   })
+
+  it('createInitialState has alwaysCapture false', () => {
+    expect(store.state.alwaysCapture).toBe(false)
+  })
+
+  it('setAlwaysCapture toggles and emits', () => {
+    let calls = 0
+    store.onChange = () => calls++
+    store.setAlwaysCapture(true)
+    expect(store.state.alwaysCapture).toBe(true)
+    store.setAlwaysCapture(false)
+    expect(store.state.alwaysCapture).toBe(false)
+    expect(calls).toBe(2)
+  })
 })

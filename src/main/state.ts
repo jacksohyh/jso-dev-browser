@@ -7,7 +7,7 @@ export function newPartition(): string {
 
 export function createInitialState(): AppState {
   const g: GroupInfo = { id: randomUUID(), name: 'Group 1', tabs: [] }
-  return { groups: [g], activeGroupId: g.id, activeTabByGroup: {}, zoom: 0 }
+  return { groups: [g], activeGroupId: g.id, activeTabByGroup: {}, zoom: 0, alwaysCapture: false }
 }
 
 /** Single source of truth for groups/tabs/sessions. Pure data — no Electron. */
@@ -165,6 +165,11 @@ export class AppStore {
   setZoom(level: number) {
     if (!Number.isFinite(level)) return
     this.state.zoom = Math.max(-3, Math.min(3, level))
+    this.emit()
+  }
+
+  setAlwaysCapture(v: boolean) {
+    this.state.alwaysCapture = v
     this.emit()
   }
 

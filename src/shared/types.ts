@@ -18,6 +18,7 @@ export interface AppState {
   activeGroupId: string
   activeTabByGroup: Record<string, string>
   zoom: number // webContents zoom level shared by all tabs; 0 = 100%
+  alwaysCapture: boolean // when true, network requests are captured for all tabs without opt-in
 }
 
 export interface RequestSummary {

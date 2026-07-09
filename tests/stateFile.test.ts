@@ -62,4 +62,11 @@ describe('stateFile', () => {
     saveState(file, s)
     expect(loadState(file)!.zoom).toBe(2)
   })
+
+  it('defaults missing alwaysCapture to false', () => {
+    const s = createInitialState()
+    const { alwaysCapture, ...rest } = s as any
+    writeFileSync(file, JSON.stringify(rest))
+    expect(loadState(file)!.alwaysCapture).toBe(false)
+  })
 })

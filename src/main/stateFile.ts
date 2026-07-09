@@ -21,6 +21,7 @@ export function loadState(file: string): AppState | null {
       return null
     }
     if (typeof data.zoom !== 'number') data.zoom = 0
+    if (typeof data.alwaysCapture !== 'boolean') data.alwaysCapture = false
     return data as AppState
   } catch {
     return null
