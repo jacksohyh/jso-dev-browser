@@ -156,6 +156,9 @@ function registerIpc() {
   ipcMain.handle('group:activate', (_e, id: string) => {
     safe(() => store.setActiveGroup(id))
   })
+  ipcMain.handle('group:setWidth', (_e, id: string, width: number) => {
+    safe(() => store.setGroupWidth(id, width))
+  })
 
   ipcMain.handle('tab:add', (_e, groupId: string) => {
     safe(() => store.addTab(groupId))
@@ -196,6 +199,7 @@ function registerIpc() {
     if (!group) return
     Menu.buildFromTemplate([
       { label: 'Rename', click: () => win.webContents.send('chrome:startRename', 'group', id) },
+      { label: 'Adjust width', click: () => win.webContents.send('chrome:startAdjust', id) },
       {
         label: 'Delete',
         click: async () => {

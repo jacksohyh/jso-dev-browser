@@ -10,6 +10,7 @@ export interface GroupInfo {
   id: string
   name: string
   tabs: TabInfo[]
+  width?: number // px; undefined = auto width
 }
 
 export interface AppState {

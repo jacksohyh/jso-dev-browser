@@ -25,7 +25,9 @@ body {
 }
 .groups .chip,
 .groups .add,
-.groups .cog {
+.groups .cog,
+.groups .adjust-handle,
+.groups .adjust-tick {
   -webkit-app-region: no-drag;
 }
 .chip {
@@ -42,6 +44,27 @@ body {
 .chip .label {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.chip.adjusting {
+  outline: 1px dashed #61afef;
+  overflow: hidden;
+}
+.adjust-tick {
+  cursor: pointer;
+  color: #98c379;
+  padding: 0 2px;
+}
+.adjust-tick:hover {
+  color: #b6e3a0;
+}
+.adjust-handle {
+  width: 6px;
+  align-self: stretch;
+  margin-left: auto;
+  cursor: ew-resize;
+  background: #4a5162;
+  border-radius: 2px;
+  flex: 0 0 auto;
 }
 .session-wrap {
   display: inline-flex;

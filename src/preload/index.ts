@@ -33,6 +33,14 @@ const api = {
   deleteGroup: (id: string): Promise<void> => ipcRenderer.invoke('group:delete', id),
   activateGroup: (id: string): Promise<void> => ipcRenderer.invoke('group:activate', id),
   showGroupMenu: (id: string): Promise<void> => ipcRenderer.invoke('menu:group', id),
+  setGroupWidth: (id: string, width: number): Promise<void> => ipcRenderer.invoke('group:setWidth', id, width),
+  onStartAdjust: (cb: (groupId: string) => void) => {
+    const h = (_e: IpcRendererEvent, id: string) => cb(id)
+    ipcRenderer.on('chrome:startAdjust', h)
+    return (): void => {
+      ipcRenderer.removeListener('chrome:startAdjust', h)
+    }
+  },
 
   // --- tabs ---
   addTab: (groupId: string): Promise<void> => ipcRenderer.invoke('tab:add', groupId),

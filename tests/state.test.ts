@@ -183,4 +183,19 @@ describe('AppStore', () => {
     store.nextGroup()
     expect(store.state.activeGroupId).toBe(g1.id)
   })
+
+  it('setGroupWidth clamps to [48,400], guards non-finite, and emits', () => {
+    const g = store.state.groups[0]
+    let calls = 0
+    store.onChange = () => calls++
+    store.setGroupWidth(g.id, 120)
+    expect(store.group(g.id).width).toBe(120)
+    store.setGroupWidth(g.id, 5)
+    expect(store.group(g.id).width).toBe(48)
+    store.setGroupWidth(g.id, 9999)
+    expect(store.group(g.id).width).toBe(400)
+    store.setGroupWidth(g.id, NaN)
+    expect(store.group(g.id).width).toBe(400)
+    expect(calls).toBe(3)
+  })
 })

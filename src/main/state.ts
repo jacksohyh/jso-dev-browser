@@ -168,6 +168,12 @@ export class AppStore {
     this.emit()
   }
 
+  setGroupWidth(groupId: string, width: number) {
+    if (!Number.isFinite(width)) return
+    this.group(groupId).width = Math.max(48, Math.min(400, width))
+    this.emit()
+  }
+
   nextTab() {
     const groupId = this.state.activeGroupId
     const group = this.group(groupId)
