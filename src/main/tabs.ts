@@ -30,6 +30,7 @@ export class TabManager {
   private views = new Map<string, WebContentsView>()
   private shownTabId: string | null = null
   private zoom = 0
+  private extraOffset = 0
   onZoomStep?: (delta: number) => void
 
   constructor(
@@ -156,6 +157,14 @@ export class TabManager {
     const view = this.views.get(this.shownTabId)
     if (!view) return
     const [w, h] = this.win.getContentSize()
-    view.setBounds({ x: 0, y: CHROME_HEIGHT, width: w, height: Math.max(0, h - CHROME_HEIGHT) })
+    const top = CHROME_HEIGHT + this.extraOffset
+    view.setBounds({ x: 0, y: top, width: w, height: Math.max(0, h - top) })
+  }
+
+  /** Push the page view down by `px` (used to reveal the save-password bar below the address row). */
+  setExtraOffset(px: number) {
+    if (this.extraOffset === px) return
+    this.extraOffset = px
+    this.layout()
   }
 }

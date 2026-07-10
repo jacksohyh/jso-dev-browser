@@ -45,7 +45,10 @@ function activeTabInfo(): { id: string; name: string } | null {
   return t ? { id: t.id, name: t.name } : null
 }
 
+const SAVE_PROMPT_HEIGHT = 38
+
 function promptNextSave() {
+  tabs.setExtraOffset(saveQueue.length > 0 ? SAVE_PROMPT_HEIGHT : 0)
   const next = saveQueue[0]
   if (next && win && !win.isDestroyed()) {
     win.webContents.send('chrome:savePrompt', { origin: next.origin, username: next.username })
