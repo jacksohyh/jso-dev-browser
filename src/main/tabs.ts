@@ -81,6 +81,12 @@ export class TabManager {
       // -3 = ERR_ABORTED (normal during quick re-navigation) — not an error
       if (isMainFrame && code !== -3) wc.loadURL(errorPageUrl(failedUrl, `${desc} (${code})`))
     })
+    wc.on('found-in-page', (_e, result) => {
+      this.win.webContents.send('find:result', {
+        active: result.activeMatchOrdinal,
+        total: result.matches
+      })
+    })
     wc.on('did-finish-load', () => wc.setZoomLevel(this.zoom))
     wc.on('zoom-changed', (_e, dir: 'in' | 'out') => {
       this.onZoomStep?.(dir === 'in' ? 0.5 : -0.5)

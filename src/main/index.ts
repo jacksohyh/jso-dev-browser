@@ -46,9 +46,15 @@ function activeTabInfo(): { id: string; name: string } | null {
 }
 
 const SAVE_PROMPT_HEIGHT = 38
+const FIND_BAR_HEIGHT = 34
+const chromeExtras = { save: 0, find: 0 }
+function applyChromeExtra() {
+  tabs.setExtraOffset(chromeExtras.save + chromeExtras.find)
+}
 
 function promptNextSave() {
-  tabs.setExtraOffset(saveQueue.length > 0 ? SAVE_PROMPT_HEIGHT : 0)
+  chromeExtras.save = saveQueue.length > 0 ? SAVE_PROMPT_HEIGHT : 0
+  applyChromeExtra()
   const next = saveQueue[0]
   if (next && win && !win.isDestroyed()) {
     win.webContents.send('chrome:savePrompt', { origin: next.origin, username: next.username })
@@ -130,6 +136,11 @@ function wireShortcuts(wc: WebContents) {
     } else if (key === 'f12' && !ctrl && !input.shift) {
       event.preventDefault()
       togglePanel()
+    } else if (ctrl && !input.shift && key === 'f') {
+      event.preventDefault()
+      chromeExtras.find = FIND_BAR_HEIGHT
+      applyChromeExtra()
+      win.webContents.send('chrome:find')
     } else if (ctrl && key === 'r') {
       event.preventDefault()
       if (tab) tabs.reload(tab.id)
@@ -240,6 +251,20 @@ function registerIpc() {
     const current = saveQueue.shift()
     if (accept && current) vault.add(current.origin, current.username, current.password)
     promptNextSave()
+  })
+  ipcMain.handle('find:query', (_e, text: string, forward: boolean, findNext: boolean) => {
+    const t = store.activeTab()
+    const wc = t ? tabs.view(t.id)?.webContents : undefined
+    if (!wc) return
+    if (!text) wc.stopFindInPage('clearSelection')
+    else wc.findInPage(text, { forward, findNext })
+  })
+  ipcMain.handle('find:stop', () => {
+    const t = store.activeTab()
+    const wc = t ? tabs.view(t.id)?.webContents : undefined
+    wc?.stopFindInPage('clearSelection')
+    chromeExtras.find = 0
+    applyChromeExtra()
   })
   ipcMain.handle('save:never', () => {
     const current = saveQueue.shift()

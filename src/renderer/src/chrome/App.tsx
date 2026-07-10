@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { AppState } from '../../../shared/types'
 import { AddressBar } from './AddressBar'
 import { GroupBar } from './GroupBar'
+import { FindBar } from './FindBar'
 import { SavePrompt } from './SavePrompt'
 import { TabBar } from './TabBar'
 
@@ -24,6 +25,7 @@ export function App() {
       <TabBar group={group} activeTabId={activeTabId} groups={state.groups} />
       <AddressBar tab={activeTab} />
       <SavePrompt />
+      <FindBar />
     </>
   )
 }

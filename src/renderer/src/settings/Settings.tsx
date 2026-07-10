@@ -100,6 +100,7 @@ export function Settings() {
           <tr><td>Ctrl+Tab</td><td>Next tab (wraps)</td></tr>
           <tr><td>Ctrl+Shift+Tab</td><td>Next group (wraps)</td></tr>
           <tr><td>Ctrl+L</td><td>Focus address bar</td></tr>
+          <tr><td>Ctrl+F</td><td>Find in page</td></tr>
           <tr><td>Ctrl+R</td><td>Reload</td></tr>
           <tr><td>Ctrl+= / Ctrl+- / Ctrl+0</td><td>Zoom in / out / reset</td></tr>
           <tr><td>Ctrl+wheel</td><td>Zoom</td></tr>

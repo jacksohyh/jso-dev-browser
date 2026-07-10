@@ -87,6 +87,25 @@ const api = {
   savePassword: (accept: boolean): Promise<void> => ipcRenderer.invoke('save:decide', accept),
   neverSave: (): Promise<void> => ipcRenderer.invoke('save:never'),
 
+  // --- find in page ---
+  onFindOpen: (cb: () => void) => {
+    const h = () => cb()
+    ipcRenderer.on('chrome:find', h)
+    return (): void => {
+      ipcRenderer.removeListener('chrome:find', h)
+    }
+  },
+  onFindResult: (cb: (r: { active: number; total: number }) => void) => {
+    const h = (_e: IpcRendererEvent, r: { active: number; total: number }) => cb(r)
+    ipcRenderer.on('find:result', h)
+    return (): void => {
+      ipcRenderer.removeListener('find:result', h)
+    }
+  },
+  findQuery: (text: string, forward: boolean, findNext: boolean): Promise<void> =>
+    ipcRenderer.invoke('find:query', text, forward, findNext),
+  findStop: (): Promise<void> => ipcRenderer.invoke('find:stop'),
+
   // --- settings window ---
   settingsList: (): Promise<{
     origins: { origin: string; logins: { id: string; username: string }[] }[]
