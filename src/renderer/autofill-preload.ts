@@ -124,6 +124,19 @@ function fillInto(field: HTMLInputElement, username: string, password: string) {
   setValue(pw ?? null, password)
 }
 
+/** True only for inputs that are part of a login form (password field, or a
+ *  username/email field whose form — or the page, if there's no form — actually
+ *  contains a password field). Prevents the dropdown from popping on unrelated
+ *  text inputs / comboboxes (role filters, template selectors, search, etc.). */
+function isLoginField(el: HTMLInputElement): boolean {
+  if (el.type === 'password') return true
+  if (el.type !== 'text' && el.type !== 'email') return false
+  const ac = (el.autocomplete || '').toLowerCase()
+  if (ac === 'username' || ac === 'email') return true
+  const scope: ParentNode = el.closest('form') ?? document
+  return !!scope.querySelector('input[type="password"]')
+}
+
 let cachedLogins: { id: string; username: string }[] = []
 
 async function refreshLogins() {
@@ -141,8 +154,8 @@ document.addEventListener(
     const el = e.target as HTMLElement
     if (
       el instanceof HTMLInputElement &&
-      (el.type === 'password' || el.type === 'text' || el.type === 'email') &&
-      cachedLogins.length > 0
+      cachedLogins.length > 0 &&
+      isLoginField(el)
     ) {
       showDropdown(el, cachedLogins)
     }
