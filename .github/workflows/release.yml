@@ -1,7 +1,11 @@
 name: release
 
 # Push a version tag (e.g. `git tag v0.4.13 && git push origin v0.4.13`) to build
-# Windows + macOS artifacts and attach them to a GitHub Release for that version.
+# Windows + macOS artifacts and attach them to a single GitHub Release.
+#
+# Build runs in parallel per-OS and uploads its output as workflow artifacts;
+# a final job collects them all and publishes ONE release. (Publishing directly
+# from parallel electron-builder jobs races and creates duplicate draft releases.)
 on:
   push:
     tags:
@@ -19,8 +23,6 @@ jobs:
           - os: macos-latest
             flag: '--mac'
     runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write # needed for electron-builder to publish the Release
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -29,7 +31,29 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - run: npx electron-builder ${{ matrix.flag }} --publish always
+      - run: npx electron-builder ${{ matrix.flag }} --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false # skip macOS code-signing (unsigned build)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.os }}
+          path: |
+            release/*.exe
+            release/*.dmg
+            release/*.zip
+          if-no-files-found: ignore
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/**
+          fail_on_unmatched_files: false
