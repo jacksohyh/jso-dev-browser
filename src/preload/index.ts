@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { IpcRendererEvent } from 'electron'
-import type { AppState, RequestSummary } from '../shared/types'
+import type { AppState, DownloadRecord, RequestSummary } from '../shared/types'
 
 const api = {
   // --- chrome window: state ---
@@ -52,6 +52,14 @@ const api = {
   back: (id: string): Promise<void> => ipcRenderer.invoke('tab:back', id),
   forward: (id: string): Promise<void> => ipcRenderer.invoke('tab:forward', id),
   reload: (id: string): Promise<void> => ipcRenderer.invoke('tab:reload', id),
+  stopLoad: (id: string): Promise<void> => ipcRenderer.invoke('tab:stop', id),
+  onLoading: (cb: (s: { id: string; loading: boolean }) => void) => {
+    const h = (_e: IpcRendererEvent, s: { id: string; loading: boolean }) => cb(s)
+    ipcRenderer.on('tab:loading', h)
+    return (): void => {
+      ipcRenderer.removeListener('tab:loading', h)
+    }
+  },
   togglePanel: (): Promise<void> => ipcRenderer.invoke('panel:toggle'),
   showTabMenu: (id: string): Promise<void> => ipcRenderer.invoke('menu:tab', id),
 
@@ -70,6 +78,21 @@ const api = {
   getRequestDetail: (requestId: string): Promise<unknown> => ipcRenderer.invoke('panel:detail', requestId),
   getResponseBody: (requestId: string): Promise<string | null> => ipcRenderer.invoke('panel:body', requestId),
   clearRequests: (): Promise<void> => ipcRenderer.invoke('panel:clear'),
+
+  // --- downloads ---
+  downloadsInit: (): Promise<DownloadRecord[]> => ipcRenderer.invoke('downloads:init'),
+  onDownloads: (cb: (records: DownloadRecord[]) => void) => {
+    const h = (_e: IpcRendererEvent, r: DownloadRecord[]) => cb(r)
+    ipcRenderer.on('downloads:state', h)
+    return (): void => {
+      ipcRenderer.removeListener('downloads:state', h)
+    }
+  },
+  toggleDownloads: (): Promise<void> => ipcRenderer.invoke('downloads:toggle'),
+  downloadCancel: (id: string): Promise<void> => ipcRenderer.invoke('downloads:cancel', id),
+  downloadOpen: (id: string): Promise<void> => ipcRenderer.invoke('downloads:open', id),
+  downloadShow: (id: string): Promise<void> => ipcRenderer.invoke('downloads:show', id),
+  downloadsClear: (): Promise<void> => ipcRenderer.invoke('downloads:clear'),
 
   // --- always-capture ---
   getAlwaysCapture: (): Promise<boolean> => ipcRenderer.invoke('capture:get'),

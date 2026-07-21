@@ -1,0 +1,35 @@
+name: release
+
+# Push a version tag (e.g. `git tag v0.4.13 && git push origin v0.4.13`) to build
+# Windows + macOS artifacts and attach them to a GitHub Release for that version.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            flag: '--win'
+          - os: macos-latest
+            flag: '--mac'
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write # needed for electron-builder to publish the Release
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npx electron-builder ${{ matrix.flag }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false # skip macOS code-signing (unsigned build)

@@ -5,9 +5,21 @@ directories:
 files:
   - out/**
 win:
+  icon: build/icon.ico
   target:
     - nsis
     - portable
 nsis:
   oneClick: true
   deleteAppDataOnUninstall: false
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+mac:
+  icon: build/icon.png
+  category: public.app-category.developer-tools
+  identity: null # unsigned build — users right-click → Open on first launch
+  target:
+    - dmg
+    - zip
+publish:
+  provider: github

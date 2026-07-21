@@ -115,6 +115,38 @@ export class AppStore {
     return dup
   }
 
+  /**
+   * Open a link in a new tab that shares the source tab's session — the
+   * middle-click / ctrl-click / target=_blank path. Placed next to the source
+   * tab's session cluster (like duplicateTab) so same-session tabs stay
+   * contiguous and keep their session border. background=true leaves focus put.
+   */
+  openLinkTab(sourceTabId: string, url: string, opts: { background?: boolean } = {}): TabInfo {
+    const { group, tab } = this.findTab(sourceTabId)
+    let name = 'New Tab'
+    try {
+      name = new URL(url).hostname || name
+    } catch {
+      /* keep the default; the page title replaces it once loaded */
+    }
+    const created: TabInfo = {
+      id: randomUUID(),
+      name,
+      customName: false,
+      url,
+      partition: tab.partition
+    }
+    let last = group.tabs.indexOf(tab)
+    while (last + 1 < group.tabs.length && group.tabs[last + 1].partition === tab.partition) last++
+    group.tabs.splice(last + 1, 0, created)
+    if (!opts.background) {
+      this.state.activeGroupId = group.id
+      this.state.activeTabByGroup[group.id] = created.id
+    }
+    this.emit()
+    return created
+  }
+
   /** partitionOrphaned=true when no remaining tab shares the closed tab's session. */
   closeTab(tabId: string): { tab: TabInfo; partitionOrphaned: boolean } {
     const { group, tab } = this.findTab(tabId)

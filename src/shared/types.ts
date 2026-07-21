@@ -32,6 +32,17 @@ export interface RequestSummary {
   redirects?: { url: string; status: number | null }[] // earlier legs of a redirect chain
 }
 
+export interface DownloadRecord {
+  id: string
+  filename: string
+  url: string
+  savePath: string
+  state: 'progressing' | 'paused' | 'completed' | 'cancelled' | 'interrupted'
+  receivedBytes: number
+  totalBytes: number // 0 when the server didn't report a size
+  startedAt: number
+}
+
 export interface PasswordEntry {
   id: string
   origin: string

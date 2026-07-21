@@ -1,4 +1,4 @@
-import { BrowserWindow, WebContentsView, session } from 'electron'
+import { BrowserWindow, dialog, WebContentsView, session } from 'electron'
 import type { WebContents } from 'electron'
 import { join } from 'node:path'
 import type { TabInfo } from '../shared/types'
@@ -22,6 +22,8 @@ export function errorPageUrl(failedUrl: string, description: string): string {
 export interface TabManagerEvents {
   wireShortcuts: (wc: WebContents) => void
   onViewReady?: (tabId: string) => void
+  /** Restore persisted session cookies into the partition; resolves before the tab loads. */
+  prepareSession?: (partition: string) => Promise<void>
 }
 
 export class TabManager {
@@ -31,6 +33,8 @@ export class TabManager {
   private shownTabId: string | null = null
   private zoom = 0
   private extraOffset = 0
+  /** Set on app quit so unsaved-changes prompts don't block shutdown. */
+  quitting = false
   onZoomStep?: (delta: number) => void
 
   constructor(
@@ -63,13 +67,24 @@ export class TabManager {
     })
     this.views.set(tab.id, view)
     const wc = view.webContents
-    // OAuth/login popups: explicitly allow window.open so sign-in flows work.
-    // Child windows inherit this webContents' session, so cookies stay in the
-    // tab's partition and window.opener callbacks keep working.
-    wc.setWindowOpenHandler(() => ({
-      action: 'allow',
-      overrideBrowserWindowOptions: { autoHideMenuBar: true }
-    }))
+    wc.setWindowOpenHandler(({ url, disposition }) => {
+      // Middle-click / ctrl-click ('background-tab') and target=_blank
+      // ('foreground-tab') should become a tab in OUR chrome sharing this tab's
+      // session — not a native popup window. Matches Chrome.
+      if (disposition === 'background-tab' || disposition === 'foreground-tab') {
+        if (url && url !== 'about:blank') {
+          this.store.openLinkTab(tab.id, url, { background: disposition === 'background-tab' })
+        }
+        return { action: 'deny' }
+      }
+      // window.open with features ('new-window') stays a real popup so OAuth /
+      // sign-in flows keep their window.opener callback. Child windows inherit
+      // this webContents' session, so cookies stay in the tab's partition.
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: { autoHideMenuBar: true }
+      }
+    })
     wc.on('page-title-updated', (_e, title) => this.store.setTabTitle(tab.id, title))
     wc.on('did-navigate', (_e, url) => {
       if (!url.startsWith('data:')) this.store.setTabUrl(tab.id, url)
@@ -87,13 +102,41 @@ export class TabManager {
         total: result.matches
       })
     })
+    // A page's beforeunload handler (e.g. an unsaved-changes guard) fires this.
+    // Without a handler, Electron silently CANCELS the reload/navigation — so we
+    // show the standard "leave page?" confirm and allow it if the user agrees.
+    wc.on('will-prevent-unload', (event) => {
+      if (this.quitting) {
+        event.preventDefault() // allow unload — don't block app shutdown
+        return
+      }
+      const choice = dialog.showMessageBoxSync(this.win, {
+        type: 'question',
+        buttons: ['Leave', 'Stay'],
+        defaultId: 0,
+        cancelId: 1,
+        title: 'Leave this page?',
+        message: 'Leave this page?',
+        detail: 'Changes you made may not be saved.'
+      })
+      if (choice === 0) event.preventDefault() // preventDefault here = proceed with unload
+    })
+    wc.on('did-start-loading', () => this.emitLoading(tab.id, true))
+    wc.on('did-stop-loading', () => this.emitLoading(tab.id, false))
     wc.on('did-finish-load', () => wc.setZoomLevel(this.zoom))
     wc.on('zoom-changed', (_e, dir: 'in' | 'out') => {
       this.onZoomStep?.(dir === 'in' ? 0.5 : -0.5)
     })
     this.events.wireShortcuts(wc)
     this.events.onViewReady?.(tab.id)
-    if (tab.url && tab.url !== 'about:blank') wc.loadURL(tab.url)
+    // Restore this partition's session cookies BEFORE the first navigation so the
+    // opening request carries any saved login token; otherwise load immediately.
+    const load = (): void => {
+      if (tab.url && tab.url !== 'about:blank') wc.loadURL(tab.url)
+    }
+    const prep = this.events.prepareSession?.(tab.partition)
+    if (prep) prep.then(load, load)
+    else load()
     return view
   }
 
@@ -143,10 +186,19 @@ export class TabManager {
     }
   }
 
+  private emitLoading(tabId: string, loading: boolean) {
+    if (!this.win.isDestroyed()) this.win.webContents.send('tab:loading', { id: tabId, loading })
+  }
+
   navigate(tabId: string, url: string) {
     this.store.setTabUrl(tabId, url)
     const view = this.views.get(tabId)
     if (view) view.webContents.loadURL(url)
+  }
+
+  /** Stop the in-progress load for a tab (the ⟳→✕ stop button). */
+  stop(tabId: string) {
+    this.views.get(tabId)?.webContents.stop()
   }
 
   /** Reload; if we're on the inline error page, retry the tab's real URL instead. */

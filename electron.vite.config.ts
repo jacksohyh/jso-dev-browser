@@ -21,7 +21,8 @@ export default defineConfig({
         input: {
           chrome: resolve(__dirname, 'src/renderer/index.html'),
           panel: resolve(__dirname, 'src/renderer/panel.html'),
-          settings: resolve(__dirname, 'src/renderer/settings.html')
+          settings: resolve(__dirname, 'src/renderer/settings.html'),
+          downloads: resolve(__dirname, 'src/renderer/downloads.html')
         }
       }
     }

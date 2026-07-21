@@ -52,6 +52,34 @@ describe('AppStore', () => {
     expect(t2.id).not.toBe(t1.id)
   })
 
+  it('openLinkTab shares the source session and uses the link url', () => {
+    const g = store.state.groups[0]
+    const src = store.addTab(g.id, { url: 'http://localhost:3000' })
+    const opened = store.openLinkTab(src.id, 'http://localhost:3000/docs')
+    expect(opened.partition).toBe(src.partition)
+    expect(opened.url).toBe('http://localhost:3000/docs')
+    expect(opened.name).toBe('localhost')
+  })
+
+  it('openLinkTab activates in foreground but leaves focus put in background', () => {
+    const g = store.state.groups[0]
+    const src = store.addTab(g.id, { url: 'http://localhost:3000' })
+    const bg = store.openLinkTab(src.id, 'http://localhost:3000/a', { background: true })
+    expect(store.state.activeTabByGroup[g.id]).toBe(src.id)
+    const fg = store.openLinkTab(src.id, 'http://localhost:3000/b')
+    expect(store.state.activeTabByGroup[g.id]).toBe(fg.id)
+    expect(bg.id).not.toBe(fg.id)
+  })
+
+  it('openLinkTab keeps same-session tabs contiguous (session border stays intact)', () => {
+    const g = store.state.groups[0]
+    const a = store.addTab(g.id)
+    const other = store.addTab(g.id)
+    const link = store.openLinkTab(a.id, 'http://localhost:3000/x', { background: true })
+    const ids = store.group(g.id).tabs.map((t) => t.id)
+    expect(ids).toEqual([a.id, link.id, other.id])
+  })
+
   it('closeTab reports partition orphaned only when no other tab shares it', () => {
     const g = store.state.groups[0]
     const t1 = store.addTab(g.id)

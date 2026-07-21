@@ -1,9 +1,12 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, safeStorage, session } from 'electron'
 import type { WebContents } from 'electron'
 import { existsSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { normalizeUrl } from '../shared/normalizeUrl'
 import { PanelManager } from './apiPanel'
+import { CookieStore } from './cookieStore'
+import { DownloadManager } from './downloads'
+import { DownloadsWindow } from './downloadsWindow'
 import { AppStore } from './state'
 import { debouncedSaver, loadState, saveState } from './stateFile'
 import { TabManager } from './tabs'
@@ -17,6 +20,9 @@ let tabs: TabManager
 let panels: PanelManager
 let settings: SettingsWindow | undefined
 let vault: Vault
+let cookieStore: CookieStore
+let downloadsMgr: DownloadManager
+let downloadsWin: DownloadsWindow
 let saveQueue: { origin: string; username: string; password: string }[] = []
 
 const stateFile = () => join(app.getPath('userData'), 'state.json')
@@ -91,6 +97,7 @@ function closeTab(tabId: string) {
   if (!closed) return
   panels.closeForTab(tabId)
   tabs.closeTab(tabId, closed.partitionOrphaned, closed.tab.partition)
+  if (closed.partitionOrphaned) cookieStore.forget(closed.tab.partition)
   syncShownTab()
 }
 
@@ -99,7 +106,9 @@ function deleteGroup(groupId: string) {
   if (!removed) return
   for (const t of removed) {
     panels.closeForTab(t.id)
-    tabs.closeTab(t.id, !store.isPartitionInUse(t.partition), t.partition)
+    const orphaned = !store.isPartitionInUse(t.partition)
+    tabs.closeTab(t.id, orphaned, t.partition)
+    if (orphaned) cookieStore.forget(t.partition)
   }
   syncShownTab()
 }
@@ -203,6 +212,9 @@ function registerIpc() {
   ipcMain.handle('tab:reload', (_e, id: string) => {
     safe(() => tabs.reload(id))
   })
+  ipcMain.handle('tab:stop', (_e, id: string) => {
+    safe(() => tabs.stop(id))
+  })
 
   ipcMain.handle('menu:tab', (_e, id: string) => {
     if (!safe(() => store.findTab(id))) return
@@ -239,6 +251,13 @@ function registerIpc() {
   ipcMain.handle('panel:detail', (_e, requestId: string) => panels.detailForShown(requestId))
   ipcMain.handle('panel:body', (_e, requestId: string) => panels.bodyForShown(requestId))
   ipcMain.handle('panel:clear', () => panels.clearShown())
+
+  ipcMain.handle('downloads:init', () => downloadsMgr.list())
+  ipcMain.handle('downloads:toggle', () => downloadsWin.toggle())
+  ipcMain.handle('downloads:cancel', (_e, id: string) => downloadsMgr.cancel(id))
+  ipcMain.handle('downloads:open', (_e, id: string) => downloadsMgr.open(id))
+  ipcMain.handle('downloads:show', (_e, id: string) => downloadsMgr.show(id))
+  ipcMain.handle('downloads:clear', () => downloadsMgr.clearFinished())
 
   ipcMain.handle('capture:get', () => store.state.alwaysCapture)
   ipcMain.handle('capture:set', (_e, on: boolean) => {
@@ -296,13 +315,28 @@ app.whenReady().then(() => {
   cleanOrphanPartitions()
   const scheduleSave = debouncedSaver(stateFile(), () => store.state)
 
+  cookieStore = new CookieStore(join(app.getPath('userData'), 'session-cookies'))
+  const inUsePartitions = new Set<string>()
+  for (const g of store.state.groups) for (const t of g.tabs) inUsePartitions.add(t.partition)
+  cookieStore.prune(inUsePartitions)
+
+  downloadsMgr = new DownloadManager()
+
   createWindow()
+  downloadsWin = new DownloadsWindow(() => win)
   panels = new PanelManager((tabId) => tabs.view(tabId)?.webContents)
   panels.alwaysCapture = store.state.alwaysCapture
   const onViewReady = (tabId: string) => {
     if (store.state.alwaysCapture) panels.ensureCapture(tabId)
   }
-  tabs = new TabManager(win, store, { wireShortcuts, onViewReady })
+  tabs = new TabManager(win, store, {
+    wireShortcuts,
+    onViewReady,
+    prepareSession: (partition) => {
+      downloadsMgr.attach(session.fromPartition(partition))
+      return cookieStore.prepare(partition)
+    }
+  })
 
   vault = new Vault(join(app.getPath('userData'), 'passwords.json'), safeStorage)
   settings = new SettingsWindow(
@@ -334,6 +368,7 @@ app.whenReady().then(() => {
 })
 
 app.on('before-quit', () => {
+  if (tabs) tabs.quitting = true // let unsaved-changes prompts pass through on shutdown
   if (store) {
     try {
       saveState(stateFile(), store.state)

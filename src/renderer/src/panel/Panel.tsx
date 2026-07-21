@@ -43,10 +43,19 @@ function Headers({ headers }: { headers: Record<string, string> }) {
   )
 }
 
+type DetailTab = 'headers' | 'payload' | 'response'
+const DETAIL_TABS: { id: DetailTab; label: string }[] = [
+  { id: 'headers', label: 'Headers' },
+  { id: 'payload', label: 'Payload' },
+  { id: 'response', label: 'Response' }
+]
+
 function Detail({ requestId, onClose }: { requestId: string; onClose: () => void }) {
   const [detail, setDetail] = useState<StoredRequestView | null>(null)
   const [body, setBody] = useState<string | null>(null)
   const [missing, setMissing] = useState(false)
+  // Kept across selections (like Chrome) — stay on Response while clicking through requests.
+  const [tab, setTab] = useState<DetailTab>('headers')
 
   useEffect(() => {
     let cancelled = false
@@ -70,28 +79,44 @@ function Detail({ requestId, onClose }: { requestId: string; onClose: () => void
   if (!detail) return <div className="detail dim">loading…</div>
   return (
     <div className="detail">
-      <button className="detail-close" title="Close" onClick={onClose}>✕</button>
-      <h3>
-        {detail.method} {detail.status ?? ''} {detail.failed ? `FAILED: ${detail.failed}` : ''}
-      </h3>
-      <p className="url">{detail.url}</p>
-      {detail.redirects && detail.redirects.length > 0 && (
-        <div>
-          {detail.redirects.map((r, i) => (
-            <p key={i} className="url">
-              ↪ redirected from {r.url} ({r.status ?? '?'})
-            </p>
+      <div className="detail-head">
+        <div className="dtabs">
+          {DETAIL_TABS.map((t) => (
+            <button key={t.id} className={t.id === tab ? 'dtab sel' : 'dtab'} onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
           ))}
         </div>
-      )}
-      <h4>Request headers</h4>
-      <Headers headers={detail.requestHeaders} />
-      <h4>Request body</h4>
-      <pre>{pretty(detail.requestBody)}</pre>
-      <h4>Response headers</h4>
-      <Headers headers={detail.responseHeaders} />
-      <h4>Response body</h4>
-      <pre>{pretty(body)}</pre>
+        <button className="detail-close" title="Close" onClick={onClose}>
+          ✕
+        </button>
+      </div>
+      <div className="detail-body">
+        {tab === 'headers' && (
+          <>
+            <h3>
+              {detail.method} {detail.status ?? ''} {detail.failed ? `FAILED: ${detail.failed}` : ''}
+              {detail.durationMs != null && <span className="dim"> · {detail.durationMs}ms</span>}
+            </h3>
+            <p className="url">{detail.url}</p>
+            {detail.redirects && detail.redirects.length > 0 && (
+              <div>
+                {detail.redirects.map((r, i) => (
+                  <p key={i} className="url">
+                    ↪ redirected from {r.url} ({r.status ?? '?'})
+                  </p>
+                ))}
+              </div>
+            )}
+            <h4>Request headers</h4>
+            <Headers headers={detail.requestHeaders} />
+            <h4>Response headers</h4>
+            <Headers headers={detail.responseHeaders} />
+          </>
+        )}
+        {tab === 'payload' && <pre>{pretty(detail.requestBody)}</pre>}
+        {tab === 'response' && <pre>{pretty(body)}</pre>}
+      </div>
     </div>
   )
 }
