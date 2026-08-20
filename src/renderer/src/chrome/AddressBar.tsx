@@ -28,6 +28,13 @@ export function AddressBar({ tab }: { tab: TabInfo | null }) {
   )
   const isLoading = !!tab && loadingIds.has(tab.id)
 
+  // Mobile-view state follows the active tab.
+  const [mobile, setMobile] = useState(false)
+  useEffect(() => {
+    if (tab) window.devb.getMobile(tab.id).then(setMobile)
+    else setMobile(false)
+  }, [tab?.id])
+
   useEffect(
     () =>
       window.devb.onFocusAddress(() => {
@@ -75,6 +82,18 @@ export function AddressBar({ tab }: { tab: TabInfo | null }) {
           }}
         />
       </div>
+      <button
+        disabled={!tab}
+        className={mobile ? 'mobile-on' : undefined}
+        title={mobile ? 'Exit mobile view' : 'Mobile view (375×812 + phone UA, reloads page)'}
+        onClick={async () => {
+          if (!tab) return
+          const on = await window.devb.toggleMobile(tab.id)
+          if (on != null) setMobile(on)
+        }}
+      >
+        📱
+      </button>
       <button disabled={!tab} title="Network panel (F12)" onClick={() => tab && window.devb.togglePanel()}>
         Network
       </button>

@@ -53,6 +53,8 @@ const api = {
   forward: (id: string): Promise<void> => ipcRenderer.invoke('tab:forward', id),
   reload: (id: string): Promise<void> => ipcRenderer.invoke('tab:reload', id),
   stopLoad: (id: string): Promise<void> => ipcRenderer.invoke('tab:stop', id),
+  toggleMobile: (id: string): Promise<boolean | null> => ipcRenderer.invoke('tab:mobileToggle', id),
+  getMobile: (id: string): Promise<boolean> => ipcRenderer.invoke('tab:mobileGet', id),
   onLoading: (cb: (s: { id: string; loading: boolean }) => void) => {
     const h = (_e: IpcRendererEvent, s: { id: string; loading: boolean }) => cb(s)
     ipcRenderer.on('tab:loading', h)

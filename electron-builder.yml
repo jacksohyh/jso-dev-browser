@@ -4,16 +4,24 @@ directories:
   output: release
 files:
   - out/**
+extraResources:
+  - from: build/icon.ico
+    to: icon.ico
 win:
   icon: build/icon.ico
   target:
     - nsis
     - portable
+# Space-free artifact names: GitHub rewrites spaces in asset names (to dots),
+# which would break the exact filename match electron-updater's latest.yml needs.
 nsis:
+  artifactName: ${productName}-Setup-${version}.${ext}
   oneClick: true
   deleteAppDataOnUninstall: false
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
+portable:
+  artifactName: ${productName}-${version}.${ext}
 mac:
   icon: build/icon.png
   category: public.app-category.developer-tools
@@ -23,3 +31,5 @@ mac:
     - zip
 publish:
   provider: github
+  owner: jacksohyh
+  repo: jso-dev-browser

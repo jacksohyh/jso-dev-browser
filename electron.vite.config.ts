@@ -3,7 +3,9 @@ import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
 
 export default defineConfig({
-  main: {},
+  // Ship electron-updater from node_modules instead of bundling it — its
+  // runtime dynamic requires don't survive rollup.
+  main: { build: { rollupOptions: { external: ['electron-updater'] } } },
   preload: {
     build: {
       rollupOptions: {

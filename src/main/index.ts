@@ -10,6 +10,7 @@ import { DownloadsWindow } from './downloadsWindow'
 import { AppStore } from './state'
 import { debouncedSaver, loadState, saveState } from './stateFile'
 import { TabManager } from './tabs'
+import { initAutoUpdate } from './updater'
 import { Vault } from './vault'
 import { registerAutofill } from './autofillBridge'
 import { SettingsWindow } from './settingsWindow'
@@ -215,6 +216,8 @@ function registerIpc() {
   ipcMain.handle('tab:stop', (_e, id: string) => {
     safe(() => tabs.stop(id))
   })
+  ipcMain.handle('tab:mobileToggle', (_e, id: string) => safe(() => tabs.toggleMobile(id)))
+  ipcMain.handle('tab:mobileGet', (_e, id: string) => tabs.isMobile(id))
 
   ipcMain.handle('menu:tab', (_e, id: string) => {
     if (!safe(() => store.findTab(id))) return
@@ -296,11 +299,19 @@ function registerIpc() {
   })
 }
 
+/** The app icon on disk — bundled via extraResources when packaged, from build/ in dev. */
+function iconPath(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, 'icon.ico')
+    : join(__dirname, '../../build/icon.ico')
+}
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1280,
     height: 800,
     autoHideMenuBar: true,
+    icon: iconPath(), // set the window/taskbar icon so it matches the pinned exe icon
     titleBarStyle: 'hidden',
     titleBarOverlay: { color: '#14161b', symbolColor: '#d8dbe2', height: 32 },
     webPreferences: { preload: join(__dirname, '../preload/index.js') }
@@ -311,6 +322,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Match the taskbar identity to the installer's shortcut (appId in
+  // electron-builder.yml) so a running window groups under the PINNED icon
+  // instead of spawning a second, separate taskbar button on Windows.
+  if (process.platform === 'win32') app.setAppUserModelId('com.jacks.devbrowser')
   store = new AppStore(loadState(stateFile()) ?? undefined)
   cleanOrphanPartitions()
   const scheduleSave = debouncedSaver(stateFile(), () => store.state)
@@ -364,6 +379,10 @@ app.whenReady().then(() => {
   win.webContents.on('did-finish-load', () => {
     pushState()
     syncShownTab()
+  })
+
+  initAutoUpdate(win, () => {
+    tabs.quitting = true
   })
 })
 

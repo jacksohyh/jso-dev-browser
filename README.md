@@ -11,7 +11,7 @@ Plus the essentials, kept lean: a floating **Network** panel (Headers / Payload 
 
 Grab the latest build from the [**Releases**](../../releases) page:
 
-- **Windows** — `DevBrowser Setup <version>.exe` (installer) or `DevBrowser <version>.exe` (portable, no install).
+- **Windows** — `DevBrowser-Setup-<version>.exe` (installer, **auto-updates** from Releases) or `DevBrowser-<version>.exe` (portable, no install, no auto-update).
 - **macOS** — `DevBrowser-<version>.dmg` or `.zip`. The app is **unsigned**, so on first launch right-click it → **Open** to get past Gatekeeper.
 
 ## Features

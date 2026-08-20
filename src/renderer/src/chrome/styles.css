@@ -152,6 +152,10 @@ body {
 .addr button.stop {
   color: #e06c75;
 }
+.addr button.mobile-on {
+  background: #2b3b57;
+  outline: 1px solid #6ea8fe;
+}
 .addr button {
   background: #2e3440;
   border: none;

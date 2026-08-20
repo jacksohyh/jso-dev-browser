@@ -33,6 +33,8 @@ export class TabManager {
   private shownTabId: string | null = null
   private zoom = 0
   private extraOffset = 0
+  private mobileTabs = new Set<string>()
+  private defaultUA: string | null = null
   /** Set on app quit so unsaved-changes prompts don't block shutdown. */
   quitting = false
   onZoomStep?: (delta: number) => void
@@ -181,6 +183,7 @@ export class TabManager {
       if (wipe) view.webContents.once('destroyed', wipe)
       view.webContents.close()
       this.views.delete(tabId)
+      this.mobileTabs.delete(tabId)
     } else if (wipe) {
       wipe()
     }
@@ -199,6 +202,42 @@ export class TabManager {
   /** Stop the in-progress load for a tab (the ⟳→✕ stop button). */
   stop(tabId: string) {
     this.views.get(tabId)?.webContents.stop()
+  }
+
+  /**
+   * Toggle phone emulation for a tab: 375×812 viewport + mobile Chrome UA,
+   * then reload so meta-viewport / responsive JS re-evaluate. Per-tab, runtime only.
+   */
+  toggleMobile(tabId: string): boolean {
+    const view = this.views.get(tabId)
+    if (!view) return false
+    const wc = view.webContents
+    if (this.defaultUA == null) this.defaultUA = wc.getUserAgent()
+    const on = !this.mobileTabs.has(tabId)
+    if (on) {
+      this.mobileTabs.add(tabId)
+      wc.enableDeviceEmulation({
+        screenPosition: 'mobile',
+        screenSize: { width: 375, height: 812 },
+        viewSize: { width: 375, height: 812 },
+        viewPosition: { x: 0, y: 0 },
+        deviceScaleFactor: 0,
+        scale: 1
+      })
+      wc.setUserAgent(
+        'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36'
+      )
+    } else {
+      this.mobileTabs.delete(tabId)
+      wc.disableDeviceEmulation()
+      wc.setUserAgent(this.defaultUA)
+    }
+    wc.reload()
+    return on
+  }
+
+  isMobile(tabId: string): boolean {
+    return this.mobileTabs.has(tabId)
   }
 
   /** Reload; if we're on the inline error page, retry the tab's real URL instead. */
